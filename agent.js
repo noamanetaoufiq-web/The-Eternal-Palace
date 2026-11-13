@@ -7,6 +7,7 @@
   let pending = null;      // media attached to the next message
   let turnMedia = null;    // media of the turn being processed (for save_memory)
   let lastSend = 0;
+  const ERR = []; const logErr = (m) => { ERR.push(m); if (ERR.length > 8) ERR.shift(); };
 
   const SECTIONS = { home: 'home', gallery: 'gallery', memories: 'gallery', journey: 'timeline', timeline: 'timeline', notes: 'love-notes', games: 'games', dreams: 'bucket-list', extras: 'extras' };
   const TOOL_RULES = `
@@ -101,10 +102,10 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
       const label = endpoint.split('/').pop();
       try {
         const r = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!r.ok) { console.warn(`[AI] ${label} -> HTTP ${r.status}`, (await r.text().catch(() => '')).slice(0, 400)); continue; }
+        if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${label} -> HTTP ${r.status}`, d); logErr(`gemini ${label}: HTTP ${r.status} ${d}`); continue; }
         const data = await r.json(); if (data?.candidates?.[0]?.content) return data.candidates[0].content;
         console.warn(`[AI] ${label} empty`, data?.promptFeedback);
-      } catch (e) { console.error(`[AI] ${label} error:`, e); }
+      } catch (e) { console.error(`[AI] ${label} error:`, e); logErr(`gemini ${label}: ${e.message} (CORS/network)`); }
     }
     return null;
   }
@@ -145,9 +146,9 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
       const body = { model: p.model, messages, max_tokens: maxTokens, temperature: 0.9 };
       if (withTools) body.tools = OA_TOOLS;
       const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, 'HTTP-Referer': location.origin, 'X-Title': 'Eternal Palace' }, body: JSON.stringify(body) });
-      if (!r.ok) { console.warn(`[AI] ${p.name} -> HTTP ${r.status}`, (await r.text().catch(() => '')).slice(0, 300)); return null; }
+      if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${p.name} -> HTTP ${r.status}`, d); logErr(`${p.name}: HTTP ${r.status} ${d}`); return null; }
       return (await r.json())?.choices?.[0]?.message || null;
-    } catch (e) { console.error(`[AI] ${p.name} error:`, e); return null; }
+    } catch (e) { console.error(`[AI] ${p.name} error:`, e); logErr(`${p.name}: ${e.message} (CORS/network)`); return null; }
   }
   async function runOpenAI(p, text, media) {
     const q = withLoveAngle(text || 'Chof had l-modia w 3lleq 3liha.');
@@ -155,7 +156,9 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     const messages = [{ role: 'system', content: SYSTEM_PROMPT + TOOL_RULES },
       ...history.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.parts[0].text })), { role: 'user', content: user }];
     for (let i = 0; i < 4; i++) {
-      const msg = await oaCall(p, messages, true); if (!msg) return null;
+      let msg = await oaCall(p, messages, true);
+      if (!msg && i === 0) msg = await oaCall(p, messages, false); // some free models reject tool use: answer without tools
+      if (!msg) return null;
       if (!msg.tool_calls?.length) return clean(msg.content) || null;
       messages.push(msg);
       for (const tc of msg.tool_calls) {
@@ -236,6 +239,7 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     addTypingIndicator();
     const reply = await runAgent(text, media);
     removeTypingIndicator();
+    if (!reply && /debug/.test(location.search)) addMessage('⚠️ ' + (ERR.slice(-4).join(' | ') || 'no error captured'));
     const out = reply || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d 💕' : smartFallback(text));
     addMessage(out);
     if (reply) {
