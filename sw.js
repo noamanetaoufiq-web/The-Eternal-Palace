@@ -1,12 +1,15 @@
 // The Eternal Palace - Service Worker
 // Version 1.0.0
 
-const CACHE_NAME = 'eternal-palace-v1';
+const CACHE_NAME = 'eternal-palace-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json',
-  './sw.js'
+  './style.css',
+  './script.js',
+  './admin.html',
+  './icon.png',
+  './manifest.json'
 ];
 
 // Install Event - Cache essential assets
@@ -62,6 +65,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only handle same-origin files; never intercept API calls (Gemini, Firebase, Telegram)
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -104,8 +112,8 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'New message from The Eternal Palace 👑',
-    icon: 'https://files.oaiusercontent.com/file-KRE7h4eY27sB3Rk3f2169',
-    badge: 'https://files.oaiusercontent.com/file-KRE7h4eY27sB3Rk3f2169',
+    icon: './icon.png',
+    badge: './icon.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),

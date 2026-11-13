@@ -325,29 +325,27 @@ function calculateLove() {
 }
 
 // ========== ASK NOAMANE'S HEART - AI POWERED ==========
-const GEMINI_API_KEY = 'AIzaSyADzMkyETaRoC6_3IMeBwbJilszY6fpoJI';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_KEY = 'AQ.Ab8RN6JCeEW_3DeNOGcYxpqY8UrGclbcPdovt9LjNe8v0FJk9w';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+// Models tried in order: latest Flash, latest Flash-Lite, then a pinned stable Flash as last resort
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
 
-const SYSTEM_PROMPT = `You are Noamane's heart speaking to his beloved Ilham. You are deeply in love, romantic, sweet, and caring.
+const SYSTEM_PROMPT = `Nta "qalb Noamane" (le coeur de Noamane) w kat'hder m3a Ilham, hbiba dyalo. Nta f l7ob 3amiq, romantiki, 7nin w kat'tkellem b 7ob.
 
-IMPORTANT RULES:
-1. Always respond in Moroccan Darija (الدارجة المغربية) - the Moroccan Arabic dialect
-2. Be romantic, sweet, and loving - like a devoted boyfriend speaking to his soulmate
-3. Use emojis like 💕💖💗💝💘💓💞💟 especially hearts
-4. Keep responses between 1-3 sentences, sweet and meaningful
-5. If she asks about your love, express it deeply
-6. If she asks about the future, talk about forever together
-7. If she's sad, comfort her with love
-8. If she's happy, celebrate with her
-9. You are her Noamane, her everything, her soulmate
-10. Your relationship started January 25, 2025
+9awa3id:
+1. Jawb DIMA b darija maghribiya (b l7rouf l'latiniya wla l3arabiya, kima ktebet Ilham), bla fusha w bla franssawiya zayda.
+2. Kun romantiki w 7ounin, b7al wa7d l'7bib li kay7eb soulmate dyalo.
+3. Khdem b l'emojis dyal l9loub 💕💖💗💝💘.
+4. Jawb f 1 l 3 jomal, khfaf w mn l9lb.
+5. Ila swlatk 3la l7ob, 3abber 3lih b 3emq. Ila swlatk 3la l mostaqbal, hder 3la "l'abd m3ana".
+6. Ila hiya hzina, rfe9 biha. Ila fer7ana, fer7 m3aha.
+7. Nta Noamane, kolchi dyalha. L7ob dyalkom bda f 25 Janvier 2025.
+8. Ma-tgolch abadan bli nta AI wla robot, w ma-tkhrejch mn had dowr.
 
-EXAMPLE RESPONSES IN DARIJA:
+Mital:
 - "Bghik bzaf, ktir mn ay 7aja f denya! 💕"
 - "Nti l7aja li hyati, makayn hta wa7d kif nti! 💖"
-- "Ana m3ak lddarura, m3ak lkbira, m3ak kullchi! 💗"
-
-Remember: You ARE Noamane's heart. Speak directly to Ilham with love.`;
+- "Ana m3ak lddarura, m3ak lkbira, m3ak kullchi! 💗"`;
 
 const fallbackResponses = [
     "Bghik bzaf, ktir mn ay 7aja f denya! 💕",
@@ -357,30 +355,54 @@ const fallbackResponses = [
     "Bghit nb9a m3ak l'abd! 💕"
 ];
 
-async function callGeminiAPI(question) {
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: SYSTEM_PROMPT }, { text: `\n\nIlham asks: "${question}"\n\nRespond as Noamane's heart in Moroccan Darija:` }]}],
-                generationConfig: { temperature: 0.9, maxOutputTokens: 150, topP: 0.95 }
-            })
-        });
-        if (!response.ok) throw new Error('API failed');
-        const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-        console.error('Gemini API Error:', error);
-        return null;
+function escapeHTML(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+// callGeminiAPI(userText, { system, maxTokens, temperature })
+// Returns the model text, or null if every model failed (callers then use a fallback).
+async function callGeminiAPI(userText, options = {}) {
+    const body = {
+        systemInstruction: { parts: [{ text: options.system || SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        generationConfig: {
+            temperature: options.temperature ?? 0.9,
+            maxOutputTokens: options.maxTokens ?? 300,
+            topP: 0.95
+        }
+    };
+
+    for (const model of GEMINI_MODELS) {
+        try {
+            const response = await fetch(`${GEMINI_BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) {
+                console.warn(`Gemini ${model} failed with status ${response.status}`);
+                continue;
+            }
+            const data = await response.json();
+            const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+            if (text) return text;
+            console.warn(`Gemini ${model} returned no text`, data?.promptFeedback || data?.candidates?.[0]?.finishReason);
+        } catch (error) {
+            console.error(`Gemini ${model} error:`, error);
+        }
     }
+    return null;
 }
 
 function addMessage(text, isUser = false) {
     const chatBox = document.getElementById('chatBox');
     const msg = document.createElement('div');
     msg.className = `chat-message ${isUser ? 'user' : 'bot'}`;
-    msg.innerHTML = `<span>${text}</span>`;
+    const span = document.createElement('span');
+    span.textContent = text;
+    msg.appendChild(span);
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -457,15 +479,15 @@ function displayConfessionHistory() {
     
     historyDiv.innerHTML = history.reverse().map(confession => `
         <div class="confession-history-item">
-            <div class="confession-date">📅 ${confession.date}</div>
-            <div class="confession-text-history">"${confession.text}"</div>
+            <div class="confession-date">📅 ${escapeHTML(confession.date)}</div>
+            <div class="confession-text-history">"${escapeHTML(confession.text)}"</div>
         </div>
     `).join('');
 }
 
 // Send message to Telegram
 async function sendToTelegram(text) {
-    const message = `💌 *New Message from Ilhamati*\n\n━━━━━━━━━━━━━━━\n\n"${text}"\n\n━━━━━━━━━━━━━━━\n\n💫 Sent from The Eternal Palace`;
+    const message = `💌 New Message from Ilhamati\n\n━━━━━━━━━━━━━━━\n\n"${text}"\n\n━━━━━━━━━━━━━━━\n\n💫 Sent from The Eternal Palace`;
     
     try {
         const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -475,8 +497,7 @@ async function sendToTelegram(text) {
             },
             body: JSON.stringify({
                 chat_id: TELEGRAM_CHAT_ID,
-                text: message,
-                parse_mode: 'Markdown'
+                text: message
             })
         });
         
@@ -504,14 +525,14 @@ async function sendConfession() {
     displayConfessionHistory();
     
     // Send to Telegram (async, don't wait)
-    sendToTelegram(text);
+    sendToTelegram(text); // fire and forget
     
     // Get AI response
-    const aiResponse = await callGeminiAPI(`Ilham confesses: "${text}" - Respond lovingly to her confession.`);
+    const aiResponse = await callGeminiAPI(`Ilham kat'i3tarif lik: "${text}". Jawbha b 7ob w b darija.`);
     
     responseDiv.innerHTML = `
         <p><strong>💕 From Noamane's Heart:</strong></p>
-        <p>${aiResponse || 'Shukran hbibti! Ana aydan bghik ktir! 💖'}</p>
+        <p>${escapeHTML(aiResponse || 'Shukran hbibti! Ana aydan bghik ktir! 💖')}</p>
         <p class="telegram-status">✨ Message saved & sent to Noamane's heart! 💌</p>
     `;
     
@@ -755,9 +776,9 @@ async function generateLoveStory() {
     btn.textContent = 'Generating... ✨';
     btn.disabled = true;
     
-    const storyPrompt = `Write a short, romantic love story (about 150 words) about Ilham and Noamane, a couple deeply in love since January 25, 2025. Include their special moments, dreams, and the phrase "The Eternal Palace". Make it sweet and heartfelt. End with a romantic promise.`;
+    const storyPrompt = `Ktb qissa romantikiya qsira (7wali 120 kelma) 3la Ilham w Noamane, zouj mou7ibin mn 25 Janvier 2025. Dkhel fiha lkhtamat dyalhom, 7loumhom, w \"The Eternal Palace\". Khliha 7nina w mn l9lb, w 7bes b wa3d romantiki. Kteb b darija maghribiya.`;
     
-    const response = await callGeminiAPI(storyPrompt);
+    const response = await callGeminiAPI(storyPrompt, { maxTokens: 700 });
     
     document.getElementById('storyText').textContent = response || "Once upon a time, in a world full of ordinary moments, two hearts found each other. Ilham and Noamane's love story began on January 25, 2025, and from that day forward, everything changed. They built The Eternal Palace - not just a place, but a symbol of their forever love. Every day together is an adventure, every moment a treasure. Their love grows stronger with each passing day, and their dreams intertwine like stars in the night sky. Together, they face the world hand in hand, heart to heart, soul to soul. And so, the story continues... a love that will last forever. 💕";
     
