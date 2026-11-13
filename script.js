@@ -432,6 +432,8 @@ const LOVE_TAGS = [
 ];
 const LOVE_HEADS = ["A Ilham, ", "Hbibti, ", "Ya qalb Noamane, ", "A Ilhamati, ", "Ya malika, "];
 const FALLBACK_TOPICS = [
+    { re: /tiramisu|tiramisou/i, a: [
+        "m9adir dyal tiramisu: mascarpone, bayd, sokkar, biscuit cuillère (boudoir), café qwi, w cacao", "tiramisu bghiti: 250g mascarpone, 3 bayd, 80g sokkar, boudoirs, café barid, w cacao nchef 3la lfo9"] },
     { re: /kika|gato|gateau|kayk|cake|halwa|7lwa|sabl|dessert/i, a: [
         "m9adir dyal kika: bayd, dgig, sokkar, zit wla zebda, khmira (levure), w chwiya dyal lhlib", "khdi 3 bayd, 150g sokkar, 200g dgig, 100ml zit, sachet khmira w yaourt, khlti w 7ett f l'four 180° 35 d9i9a"] },
     { re: /nakl|akl|tbikh|tabkh|3cha|ghda|ftour|jou3|ndir|mangi|manger/i, a: [

@@ -108,8 +108,7 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     }
     return null;
   }
-  async function runAgent(text, media) {
-    turnMedia = media;
+  async function runGemini(text, media) {
     const userParts = [{ text: withLoveAngle(text || 'Chof had l-modia w 3lleq 3liha.') }];
     if (media) userParts.push({ inlineData: { mimeType: media.mime, data: media.data } });
     const contents = [...history, { role: 'user', parts: userParts }];
@@ -127,6 +126,73 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     }
     return null;
   }
+
+
+  // ---------- other providers (OpenAI-compatible): OpenRouter free router + Mistral ----------
+  const CFG = window.AI_KEYS || {};
+  const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+  const lowerTypes = (o) => JSON.parse(JSON.stringify(o).replace(/"type":"(OBJECT|STRING)"/g, (_, t) => `"type":"${t.toLowerCase()}"`));
+  const OA_TOOLS = lowerTypes(TOOLS[0].functionDeclarations).map(f => ({ type: 'function', function: f }));
+  const PROVIDERS = [
+    { name: 'openrouter', url: 'https://openrouter.ai/api/v1/chat/completions', key: CFG.openrouter, model: 'openrouter/free' },
+    { name: 'mistral-small', url: MISTRAL_URL, key: CFG.mistral, model: 'mistral-small-latest' },
+    { name: 'codestral', url: MISTRAL_URL, key: CFG.mistral, model: 'codestral-latest' }
+  ].filter(p => p.key);
+  const clean = (t) => (t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+  async function oaCall(p, messages, withTools, maxTokens = 500) {
+    try {
+      const body = { model: p.model, messages, max_tokens: maxTokens, temperature: 0.9 };
+      if (withTools) body.tools = OA_TOOLS;
+      const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, 'HTTP-Referer': location.origin, 'X-Title': 'Eternal Palace' }, body: JSON.stringify(body) });
+      if (!r.ok) { console.warn(`[AI] ${p.name} -> HTTP ${r.status}`, (await r.text().catch(() => '')).slice(0, 300)); return null; }
+      return (await r.json())?.choices?.[0]?.message || null;
+    } catch (e) { console.error(`[AI] ${p.name} error:`, e); return null; }
+  }
+  async function runOpenAI(p, text, media) {
+    const q = withLoveAngle(text || 'Chof had l-modia w 3lleq 3liha.');
+    const user = media?.kind === 'image' ? [{ type: 'text', text: q }, { type: 'image_url', image_url: { url: media.dataUrl } }] : q;
+    const messages = [{ role: 'system', content: SYSTEM_PROMPT + TOOL_RULES },
+      ...history.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.parts[0].text })), { role: 'user', content: user }];
+    for (let i = 0; i < 4; i++) {
+      const msg = await oaCall(p, messages, true); if (!msg) return null;
+      if (!msg.tool_calls?.length) return clean(msg.content) || null;
+      messages.push(msg);
+      for (const tc of msg.tool_calls) {
+        let res; try { res = await (tools[tc.function.name]?.(JSON.parse(tc.function.arguments || '{}')) ?? { ok: false, error: 'unknown tool' }); } catch (e) { res = { ok: false, error: String(e) }; }
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(res) });
+      }
+    }
+    return null;
+  }
+
+  // Specialist routing: code questions go to Codestral first; images/video skip text-only models.
+  const CODE_RE = /\b(code|coding|python|javascript|js|html|css|react|bug|sql|api|script|program|programmation)\b/i;
+  function providerOrder(text, media) {
+    let names = CODE_RE.test(text || '') ? ['codestral', 'gemini', 'openrouter', 'mistral-small'] : ['gemini', 'openrouter', 'mistral-small', 'codestral'];
+    if (media?.kind === 'video') names = ['gemini'];
+    if (media?.kind === 'image') names = names.filter(n => n !== 'codestral');
+    return names.map(n => n === 'gemini' ? { name: n, run: runGemini } : (p => p && { name: n, run: (t, m) => runOpenAI(p, t, m) })(PROVIDERS.find(x => x.name === n))).filter(Boolean);
+  }
+  async function runAgent(text, media) {
+    turnMedia = media;
+    for (const p of providerOrder(text, media)) {
+      const out = await p.run(text, media);
+      if (out) { console.log(`[AI] answered by ${p.name}`); return out; }
+    }
+    return null;
+  }
+
+  // Make the Extras (letters, story, confession...) use the same fallback chain
+  const geminiPlain = window.callGeminiAPI;
+  window.callGeminiAPI = async (text, opts = {}) => {
+    const out = await geminiPlain(text, opts); if (out) return out;
+    for (const p of PROVIDERS.filter(x => x.name !== 'codestral')) {
+      const msg = await oaCall(p, [{ role: 'system', content: opts.system || SYSTEM_PROMPT }, { role: 'user', content: text }], false, opts.maxTokens || 300);
+      if (msg && clean(msg.content)) return clean(msg.content);
+    }
+    return null;
+  };
 
   // ---------- media + UI ----------
   function readMedia(file) {
