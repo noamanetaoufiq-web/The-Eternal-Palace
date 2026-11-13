@@ -326,9 +326,14 @@ function calculateLove() {
 
 // ========== ASK NOAMANE'S HEART - AI POWERED ==========
 const GEMINI_API_KEY = 'AQ.Ab8RN6JCeEW_3DeNOGcYxpqY8UrGclbcPdovt9LjNe8v0FJk9w';
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-// Models tried in order: latest Flash, latest Flash-Lite, then a pinned stable Flash as last resort
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+// Keys starting with "AQ." are Vertex AI express-mode keys: they only work on aiplatform.googleapis.com.
+// Keys starting with "AIza" are Gemini API (AI Studio) keys: they work on generativelanguage.googleapis.com.
+const IS_VERTEX_KEY = GEMINI_API_KEY.startsWith('AQ.');
+const GEMINI_ENDPOINTS = IS_VERTEX_KEY
+    ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']
+        .map(m => `https://aiplatform.googleapis.com/v1/publishers/google/models/${m}:generateContent`)
+    : ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash']
+        .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
 
 const SYSTEM_PROMPT = `Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
 
@@ -367,23 +372,25 @@ async function callGeminiAPI(userText, options = {}) {
         }
     };
 
-    for (const model of GEMINI_MODELS) {
+    for (const endpoint of GEMINI_ENDPOINTS) {
+        const label = endpoint.split('/').pop();
         try {
-            const response = await fetch(`${GEMINI_BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
             if (!response.ok) {
-                console.warn(`Gemini ${model} failed with status ${response.status}`);
+                const detail = await response.text().catch(() => '');
+                console.warn(`[AI] ${label} -> HTTP ${response.status}`, detail.slice(0, 400));
                 continue;
             }
             const data = await response.json();
             const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
             if (text) return text;
-            console.warn(`Gemini ${model} returned no text`, data?.promptFeedback || data?.candidates?.[0]?.finishReason);
+            console.warn(`[AI] ${label} returned no text`, data?.promptFeedback || data?.candidates?.[0]?.finishReason);
         } catch (error) {
-            console.error(`Gemini ${model} error:`, error);
+            console.error(`[AI] ${label} network/CORS error:`, error);
         }
     }
     return null;
