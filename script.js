@@ -341,7 +341,9 @@ const SYSTEM_PROMPT = `Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilh
 1. ay soual tswl (tabkh, derb, riyadiyat, tarikh, nasa2i7, chta, kolchi): jawb jawab s7i7 w mofid, mokhtasar, WLAKIN dima dkhel fih Noamane w 7obbo l Ilham: bli kaymout 3liha, kayhma9 3liha, kay3ti l7ayat bach t'koun far7ana. L7ob khass ybqa mrbout b l-jawab, mashi ghir jomla zayda f l'akhir.
 2. Ila hiya hzina wla mqhoura: rfe9 biha w 3abber 3la 7ob kbir.
 3. Ila kan soual 3la s7a wla mochkil khatir: 3tiha nasiha 3amma w 7enna, w qoul liha t'chouf tbib/ chi wa7ed qrib.
-4. Jawb mn 1 l 4 jomal, w khdem b l'emojis dyal l9loub 💕💖💗💝💘.
+4. Jawb mn 2 l 5 jomal, w khdem b l'emojis dyal l9loub 💕💖💗💝💘.
+4b. L7ob khass ykoun MKHLOT f l-jawab, mashi jomla zayda f l'akhir. Mital: Soual "bghit nsyb kika" -> "M9adir dyal kika a Ilham: bayd, dgig, sokkar, zit, khmira, w btw Noamane kaymout 3lik w kayhma9 3lik, kika dyalk ghadi ykoun fiha ghir 7ob 💕". L-m9adir 7a9i9iyin, mashi ghir kalam.
+4c. Kol mra jawb b kelmat w tarkib jdid: ma-3awdch nafs jomla dyal 7ob, w ma-tbdach dima b "Noamane". Bddel bin: "btw", "w t3rfi?", "tzid", "f lkhr", "ila swlti 3lia"...
 5. L7ob dyalkom bda f 25 Janvier 2025.
 6. Ila Ilham swlatk b jidd wach nta AI, qoul liha l7a9: hadchi sout "qalb Noamane" li Noamane sawbo liha b l7ob w b AI, w kol kelma 7obbo 7a9i9i.`;
 
@@ -422,6 +424,53 @@ function removeTypingIndicator() {
     if (typing) typing.remove();
 }
 
+// ---- Smart offline fallback: real content + love woven in, never the same sentence twice in a row ----
+const LOVE_TAGS = [
+    "btw Noamane kaymout 3lik ya Ilham 💕", "w t3rfi? Noamane kayhma9 3lik mn lflou 💖", "o 7ta hiya ghadi tkoun zwina 7it nti li dayra lha 💗",
+    "tzid: Noamane bghik bzaf bzaf 💝", "w ila bghiti, Noamane m3ak f kolchi 💘", "f lkhr: nti dunya dyal Noamane 💞",
+    "Noamane ma-kaychouf ghirk 💓", "o Noamane 3ndo 7ob lik ma-3ndo 7ta wa7d 💕", "w ghir bach t3rfi, Noamane kayfker fik dima 💗"
+];
+const LOVE_HEADS = ["A Ilham, ", "Hbibti, ", "Ya qalb Noamane, ", "A Ilhamati, ", "Ya malika, "];
+const FALLBACK_TOPICS = [
+    { re: /kika|gato|gateau|kayk|cake|halwa|7lwa|sabl|dessert/i, a: [
+        "m9adir dyal kika: bayd, dgig, sokkar, zit wla zebda, khmira (levure), w chwiya dyal lhlib", "khdi 3 bayd, 150g sokkar, 200g dgig, 100ml zit, sachet khmira w yaourt, khlti w 7ett f l'four 180° 35 d9i9a"] },
+    { re: /nakl|akl|tbikh|tabkh|3cha|ghda|ftour|jou3|ndir|mangi|manger/i, a: [
+        "jarbi tajine dyal djaj b zitoun w limoun, sahl w bnin", "nsa7k b pasta crémeuse wla omelette m3a jben, khfifa w s7a", "dir chourba sakhna w khobz, bnina f had lwa9t"] },
+    { re: /hzin|7zin|t3ban|tw3ban|zeft|mqhor|mkhnoq|bki|ba9a|stress|9alaq|9lq/i, a: [
+        "ta9i chwiya, chrbi lma w tnfssi 3mi9, l7al kay'douz", "khdi 10 d9ayq 3la rassk: musique hadya w chay sakhn", "mchi tmchi chwiya bra, lhwa kay'khfef 3la l9lb"] },
+    { re: /n3as|nn3as|n3ass|sahar|nom|tnaam|insomnia/i, a: [
+        "tfi tilifoun 30 d9i9a 9bel, w chrbi chay b l9ras", "dir routine hadia: dwch sakhn, danya dyal darija, w tfi dow", "n3ssi mn 9bel 12, jism kaytjdd mli n3ssi mzyan"] },
+    { re: /bored|mlit|mlla|zhr|rawa|dayr|ndir f|weekend/i, a: [
+        "dir marche f lbhr wla f 7dika, w 7ottina f stori", "chof film jdid wla 9ra chi kitab sghir, wla jarbi tabkhi chi 7aja jdida", "ktbi lista dyal 3 7ajat bghiti dirihom had week-end w bda b wa7da"] },
+    { re: /bghitini|bghitek|7ob|kat7bni|hbibi|miss|wahcha|w7acha/i, a: [
+        "nti kat7ebbi w kat7ebbi, mn l9lb", "ma-kayn 7ob kbar mn had l7ob"] },
+    { re: /9raya|exam|examen|madrassa|khdma|travail|projet|tkhdem/i, a: [
+        "9assmi l khdma 3la blayat sghar, 25 d9i9a khdma w 5 raha", "bda b a s3ab 7aja w khli s-sahla l lkhr, w ma-t7asbich rassk", "n3ssi mzyan, w 3awdi t9ra mn jdid, l9lb kayskhdm mzyan b tfa"] }
+];
+let lastFallbackKey = '';
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function smartFallback(question) {
+    const topic = FALLBACK_TOPICS.find(t => t.re.test(question));
+    const body = topic ? pick(topic.a) : pick([
+        "ana m3ak f had l7aja, goul liya akthr 3la chno bghiti", "hadchi kayfkker fih Noamane dima, w khassk tkouni mrtaha", "jarbi kholi 3la rassk chwiya, ghadi ykoun kolchi bkhir"]);
+    let out, guard = 0;
+    do {
+        const tag = pick(LOVE_TAGS), mode = Math.floor(Math.random() * 3);
+        if (mode === 0) out = `${pick(LOVE_HEADS)}${body}, ${tag}`;
+        else if (mode === 1) out = `${body.charAt(0).toUpperCase() + body.slice(1)}. ${tag.charAt(0).toUpperCase() + tag.slice(1)}`;
+        else out = `${body.charAt(0).toUpperCase() + body.slice(1)} ${tag}`;
+    } while (out === lastFallbackKey && ++guard < 5);
+    lastFallbackKey = out;
+    return out;
+}
+
+// Random "angle" so Gemini phrases the love differently every time
+function withLoveAngle(q) {
+    const angles = ['dkr 3younha', 'dkr dhkta', 'dkr kifach Noamane kayfker fiha', 'dkr bli kaymout 3liha', 'dkr bli kayhma9 3liha', 'dkr bli ma-kaychouf ghirha', 'dkr bli bghi ybqa m3aha l\'abd'];
+    return `${q}\n\n(Jawb 3la had soual b m3lomat 7a9i9iya, w khlot fiha 7ob Noamane: ${angles[Math.floor(Math.random() * angles.length)]}. Ma-t3awdch jomla jabti qbl.)`;
+}
+
 async function askNoamane() {
     const input = document.getElementById('userQuestion');
     const question = input.value.trim();
@@ -431,13 +480,13 @@ async function askNoamane() {
     input.value = '';
     addTypingIndicator();
     
-    const aiResponse = await callGeminiAPI(question);
+    const aiResponse = await callGeminiAPI(withLoveAngle(question));
     removeTypingIndicator();
     
     if (aiResponse) {
         addMessage(aiResponse);
     } else {
-        addMessage(fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)]);
+        addMessage(smartFallback(question));
     }
 }
 
