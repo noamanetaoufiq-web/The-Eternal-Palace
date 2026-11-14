@@ -12,12 +12,12 @@
   const SECTIONS = { home: 'home', gallery: 'gallery', memories: 'gallery', journey: 'timeline', timeline: 'timeline', notes: 'love-notes', games: 'games', dreams: 'bucket-list', extras: 'extras' };
   const TOOL_RULES = `
 Nta 3ndk 7ta l'adawat bach tkhdem f site kaml:
-- play_music: ila talbat chi ghnia/music (l'ghani li kaynin: Cinnamon Girl, Cinnamon Girl x J Freak, Raindance).
+- play_music: ila talbat ay ghnia wla fannan, dkhel smiyt-ha b7al ma ktbat (kat'tl9a'ha f YouTube).
 - save_memory: ila 3tatk tswira w golat "7ettha f memories/dhkriyat/gallery", 7ettha m3a caption zwin b darija.
 - send_to_noamane: ila golat "sifet l Noamane / goul lih / send miss you" -> sift rissala 9sira w 7nina mn 3and Ilham.
 - add_love_note: ila bghat tzid chi note f Love Notes.
 - open_section: ila bghat tchouf chi qism mn site.
-Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nta dertha. Ila 3tatk tswira wla video, 3lleq 3liha b 7ob w b tafasil li chftiha.`;
+Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our memry'). Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nta dertha. Ila 3tatk tswira wla video, 3lleq 3liha b 7ob w b tafasil li chftiha.`;
 
   const S = (d) => ({ type: 'STRING', description: d });
   const TOOLS = [{ functionDeclarations: [
@@ -29,26 +29,51 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
   ] }];
 
   // ---------- site actions ----------
-  function showPlayer(id, title) {
+  function showPlayer(id, title, query) {
     let box = document.getElementById('aiPlayer');
     if (!box) {
       box = document.createElement('div'); box.id = 'aiPlayer';
-      box.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#1a0a2e;border:1px solid #ff6b9d;border-radius:16px;padding:8px;box-shadow:0 8px 30px #000a';
+      box.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;background:#1a0a2e;border:1px solid #ff6b9d;border-radius:16px;padding:8px;box-shadow:0 8px 30px #000a;max-width:280px';
       document.body.appendChild(box);
     }
     box.innerHTML = '';
-    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:space-between;color:#ffb6c1;font-size:.8rem;margin-bottom:6px';
+    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:space-between;gap:8px;color:#ffb6c1;font-size:.8rem;margin-bottom:6px';
     const t = document.createElement('span'); t.textContent = '🎵 ' + title;
     const x = document.createElement('button'); x.textContent = '✕'; x.style.cssText = 'background:none;border:0;color:#fff;cursor:pointer'; x.onclick = () => box.remove();
-    bar.append(t, x);
-    const f = document.createElement('iframe'); f.width = 260; f.height = 150; f.allow = 'autoplay; encrypted-media'; f.style.border = '0';
-    f.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
-    box.append(bar, f);
+    bar.append(t, x); box.append(bar);
+    if (id) {
+      const f = document.createElement('iframe'); f.width = 260; f.height = 150; f.allow = 'autoplay; encrypted-media'; f.style.border = '0';
+      f.src = `https://www.youtube.com/embed/${id}?autoplay=1`; box.append(f);
+    }
+    const link = document.createElement('a'); link.target = '_blank'; link.rel = 'noopener'; link.style.cssText = 'display:block;color:#fff;font-size:.8rem;margin-top:6px;text-decoration:underline';
+    link.href = id ? `https://www.youtube.com/watch?v=${id}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    link.textContent = id ? '↗ Fte7 f YouTube' : '↗ Chouf nata2ij f YouTube'; box.append(link);
+  }
+  // Search YouTube for any song. Uses the YouTube Data API if a key is in config.js, else public Invidious/Piped mirrors.
+  const withTimeout = (url, ms = 5000) => { const c = new AbortController(); setTimeout(() => c.abort(), ms); return fetch(url, { signal: c.signal }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }); };
+  async function searchYouTube(q) {
+    const e = encodeURIComponent(q);
+    if (CFG.youtube) {
+      try { const d = await withTimeout(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=1&q=${e}&key=${CFG.youtube}`);
+        const it = d.items?.[0]; if (it) return { id: it.id.videoId, title: it.snippet.title }; } catch (err) { logErr('youtube api: ' + err.message); }
+    }
+    const inv = (base) => withTimeout(`${base}/api/v1/search?q=${e}&type=video`).then(d => { const v = d.find(x => x.videoId); if (!v) throw 0; return { id: v.videoId, title: v.title }; });
+    const piped = (base) => withTimeout(`${base}/search?q=${e}&filter=videos`).then(d => { const v = d.items?.find(x => x.url); if (!v) throw 0; return { id: v.url.split('v=')[1], title: v.title }; });
+    try { return await Promise.any([inv('https://inv.nadeko.net'), inv('https://yewtu.be'), inv('https://invidious.nerdvpn.de'), piped('https://pipedapi.kavin.rocks'), piped('https://api.piped.private.coffee')]); }
+    catch { return null; }
+  }
+  // Memories live in Firebase (shared across devices); localStorage is only an offline backup.
+  let cloudMem = null;
+  const memRef = () => (typeof database !== 'undefined' ? database.ref('memories') : null);
+  const memList = () => cloudMem ?? jget(MEM_KEY, []);
+  function listenMemories() {
+    const r = memRef(); if (!r) return;
+    r.on('value', (s) => { cloudMem = Object.values(s.val() || {}).sort((x, y) => x.date - y.date); renderMemories(); }, (e) => logErr('firebase memories: ' + e.message));
   }
   function renderMemories() {
     const grid = document.querySelector('#gallery .gallery-grid'); if (!grid) return;
     grid.querySelectorAll('.ai-memory').forEach(n => n.remove());
-    jget(MEM_KEY, []).forEach(m => {
+    memList().forEach(m => {
       const d = document.createElement('div'); d.className = 'gallery-item ai-memory'; d.style.cssText = 'position:relative;overflow:hidden;min-height:220px;cursor:pointer';
       const img = document.createElement('img'); img.src = m.img; img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
       const cap = document.createElement('p'); cap.textContent = m.caption; cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;margin:0;padding:8px;background:#000a;color:#fff;font-size:.85rem';
@@ -64,18 +89,26 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     });
   }
   const tools = {
-    play_music({ song = '' }) {
+    async play_music({ song = '' }) {
       const cards = [...document.querySelectorAll('.song-card')];
-      const card = cards.find(c => c.textContent.toLowerCase().includes(song.toLowerCase())) || cards[0];
-      const id = (card?.href.match(/youtu\.be\/([\w-]+)/) || [])[1];
-      if (!id) return { ok: false, error: 'song not found' };
-      const title = card.querySelector('h3').textContent; showPlayer(id, title); return { ok: true, playing: title };
+      const card = song && cards.find(c => c.querySelector('h3').textContent.toLowerCase().includes(song.toLowerCase()));
+      if (card) { const id = (card.href.match(/youtu\.be\/([\w-]+)/) || [])[1]; const title = card.querySelector('h3').textContent; showPlayer(id, title); return { ok: true, playing: title }; }
+      if (!song) { const c0 = cards[0]; const id0 = (c0?.href.match(/youtu\.be\/([\w-]+)/) || [])[1]; if (!id0) return { ok: false, error: 'no song' }; const t0 = c0.querySelector('h3').textContent; showPlayer(id0, t0); return { ok: true, playing: t0 }; }
+      const hit = await searchYouTube(song);
+      if (hit) { showPlayer(hit.id, hit.title, song); return { ok: true, playing: hit.title }; }
+      showPlayer(null, song, song); return { ok: true, playing: song, note: 'could not embed, gave a YouTube search link' };
     },
-    save_memory({ caption }) {
+    async save_memory({ caption }) {
       if (!turnMedia || turnMedia.kind !== 'image') return { ok: false, error: 'no photo attached in this message' };
-      const mem = jget(MEM_KEY, []); mem.push({ img: turnMedia.dataUrl, caption, date: Date.now() });
+      const item = { img: turnMedia.dataUrl, caption, date: Date.now() };
+      const r = memRef();
+      if (r) {
+        try { await Promise.race([r.push(item), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]); return { ok: true, saved: 'cloud' }; }
+        catch (e) { logErr('save memory: ' + e.message); }
+      }
+      const mem = jget(MEM_KEY, []); mem.push(item);
       if (!jset(MEM_KEY, mem)) return { ok: false, error: 'storage full' };
-      renderMemories(); return { ok: true };
+      renderMemories(); return { ok: true, saved: 'this device only' };
     },
     async send_to_noamane({ message }) {
       if (Date.now() - lastSend < 30000) return { ok: false, error: 'wait 30 seconds between messages' };
@@ -227,25 +260,34 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     };
     row.insertBefore(btn, row.lastElementChild); row.appendChild(input);
     history.forEach(m => addMessage(m.parts[0].text, m.role === 'user'));
-    renderMemories();
+    renderMemories(); listenMemories();
   }
 
 
-  // Works even when every AI provider is down: simple intents run the site tools directly.
+  // Works even when every AI provider is down. Commands are matched loosely, so typos still work.
+  const lev = (s, t) => { const d = Array.from({ length: s.length + 1 }, (_, i) => [i, ...Array(t.length).fill(0)]); for (let j = 1; j <= t.length; j++) d[0][j] = j;
+    for (let i = 1; i <= s.length; i++) for (let j = 1; j <= t.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (s[i - 1] === t[j - 1] ? 0 : 1)); return d[s.length][t.length]; };
+  const isNear = (tok, w) => tok === w || (tok.length > 3 && lev(tok, w) <= (w.length >= 8 ? 2 : w.length >= 4 ? 1 : 0));
+  const hasWord = (toks, words) => toks.some(t => words.some(w => isNear(t, w)));
+  const W = {
+    mem: ['memory', 'memories', 'memoire', 'dhkriyat', 'dhkriya', 'dkriyat', 'dkra', 'gallery', 'galerie', '7ett', 'hett', 'hetha', 'sjl', 'save', 'zidha'],
+    music: ['music', 'musique', 'ghnia', 'ghniya', 'ghnya', 'khdm', 'play', 'chghl', 'chghel', 'sm3ni', 'sma3'],
+    send: ['sift', 'siftha', 'goul', 'golih', 'goulih'], noa: ['noamane', 'nouamane', 'noaman', 'nouman'], miss: ['miss', 'wahcht', 'w7acht', 'wahchtni']
+  };
   async function localIntent(text, media) {
-    const t = (text || '').toLowerCase();
-    if (media?.kind === 'image' && /memor|dhkri|dkri|gallery|galer|7ett|hett|zid/.test(t)) {
-      const r = tools.save_memory({ caption: `Dhkra ${new Date().toLocaleDateString('fr-FR')} 💕` });
-      return r.ok ? 'Hettitha f Memories dyalna 💕 chofiha f Gallery' : 'Ma-9dertch n7fedha: ' + r.error;
+    const toks = (text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    if (media?.kind === 'image' && hasWord(toks, W.mem)) {
+      const r = await tools.save_memory({ caption: `Dhkra ${new Date().toLocaleDateString('fr-FR')} 💕` });
+      return r.ok ? 'Hettitha f Memories dyalna 💕 ghadi tb9a hna dima, w t9der tchoufha mn ay telephone' : 'Ma-9dertch n7fedha: ' + r.error;
     }
-    if (/music|ghni|play|chghl|khdm/.test(t)) {
-      const titles = [...document.querySelectorAll('.song-card h3')].map(h => h.textContent);
-      const r = tools.play_music({ song: titles.find(x => t.includes(x.toLowerCase())) || '' });
-      return r.ok ? `Hak ${r.playing} 🎵💕` : null;
-    }
-    if (/(sift|goul|9ol).*(noamane|nou3man)|miss you|wahcht|w7acht/.test(t)) {
+    if (hasWord(toks, W.send) && hasWord(toks, W.noa) || (hasWord(toks, ['miss']) && hasWord(toks, ['you']))) {
       const r = await tools.send_to_noamane({ message: `Ilham kat9ol lik: ${text}` });
       return r.ok ? 'Siftha l Noamane 💖' : 'Ma-9dertch nsift daba, 3awdi mn ba3d 💕';
+    }
+    if (hasWord(toks, W.music)) {
+      const query = (text || '').split(/\s+/).filter(w => !hasWord([w.toLowerCase()], W.music.concat(['li', 'liya', '3tini', 'l', 'dir', 'bghit', 'bghiti', 'chof', 'f', 'youtube', 'yt']))).join(' ').trim();
+      const r = await tools.play_music({ song: query });
+      return r.ok ? `Hak ${r.playing} 🎵💕` : null;
     }
     return null;
   }
