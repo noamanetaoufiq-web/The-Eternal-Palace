@@ -5,6 +5,8 @@
 
 // ========== FIREBASE CONFIGURATION ==========
 const firebaseConfig = {
+    apiKey: "PASTE_YOUR_FIREBASE_WEB_API_KEY",
+    authDomain: "eternal-palace.firebaseapp.com",
     databaseURL: "https://eternal-palace-default-rtdb.firebaseio.com/"
 };
 
@@ -13,7 +15,7 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
 // ========== MISS YOU FEATURE ==========
-const MISS_YOU_TELEGRAM_TOKEN = '8621884244:AAFKIBfhn4vz7F2iD_XeWG2W1TgRFho8KB4';
+const MISS_YOU_TELEGRAM_TOKEN = '';
 const MISS_YOU_CHAT_ID = '5009133929';
 let missYouCooldown = false;
 
@@ -41,19 +43,8 @@ async function sendMissYou() {
     const btn = document.getElementById('missYouBtn');
     const cooldownText = document.getElementById('missYouCooldown');
     
-    // Send to Telegram
-    try {
-        await fetch(`https://api.telegram.org/bot${MISS_YOU_TELEGRAM_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: MISS_YOU_CHAT_ID,
-                text: '💖 Ilhamati misses you so much right now!'
-            })
-        });
-    } catch (error) {
-        console.error('Telegram error:', error);
-    }
+    // Send through the private chat (real backend)
+    try { await window.palaceChat?.send('💖 Ilhamati misses you so much right now!'); } catch (e) { console.error(e); }
     
     // Show hearts rain animation
     showHeartsRain();
@@ -121,35 +112,47 @@ function closeMissYouPopup() {
 }
 
 // ========== SECURITY GATE ==========
-const correctAnswer = "ilhamati";
+const ACCOUNTS = { ilhamati: 'ilhamati@palace.app', noamane: 'noamane@palace.app' };
+let palaceUnlocked = false;
+const authErrText = (e) => /network/.test(e.code || '') ? '📶 Chi mochkil f l-internet, 3awd 7awel' : /api-key|configuration/.test(e.code || '') ? '⚙️ apiKey dyal Firebase mazal ma-t7at-ch f script.js' : '🚫 Password ghalat, 3awdi 💕';
 
-function verifyAnswer() {
+async function verifyAnswer() {
     const userAnswer = document.getElementById('securityAnswer').value.toLowerCase().trim();
+    const pwd = document.getElementById('securityPassword')?.value || '';
     const errorMsg = document.getElementById('errorMsg');
-    
-    if (userAnswer === correctAnswer) {
-        document.getElementById('securityGate').style.display = 'none';
-        document.getElementById('palaceContent').classList.add('active');
-        startCounter();
-        createFloatingHearts();
-        startHeartGame();
-        initMemoryGame();
-        updateCountdowns();
-        loadNotes();
-        calculateLove();
-        setDailyMessage();
-        updateStats();
-        displayConfessionHistory();
-        initMissYouListener();
-    } else {
+    if (!ACCOUNTS[userAnswer]) {
         errorMsg.textContent = "🚫 Rah ma jditi! Try again, my queen 💕";
         document.getElementById('securityAnswer').value = '';
         document.getElementById('securityAnswer').focus();
+        return;
     }
+    errorMsg.textContent = '⏳...';
+    try { await firebase.auth().signInWithEmailAndPassword(ACCOUNTS[userAnswer], pwd); errorMsg.textContent = ''; }
+    catch (e) { errorMsg.textContent = authErrText(e); document.getElementById('securityPassword').value = ''; }
+    // success continues in onAuthStateChanged -> unlockPalace()
 }
+
+function unlockPalace() {
+    if (palaceUnlocked) return; palaceUnlocked = true;
+    document.getElementById('securityGate').style.display = 'none';
+    document.getElementById('palaceContent').classList.add('active');
+    startCounter();
+    createFloatingHearts();
+    startHeartGame();
+    initMemoryGame();
+    updateCountdowns();
+    loadNotes();
+    calculateLove();
+    setDailyMessage();
+    updateStats();
+    displayConfessionHistory();
+    initMissYouListener();
+}
+firebase.auth().onAuthStateChanged((u) => { if (u && ACCOUNTS[(u.email || '').split('@')[0]]) unlockPalace(); });
 
 // Allow Enter key to verify
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('securityPassword')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyAnswer(); });
     document.getElementById('securityAnswer')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             verifyAnswer();
@@ -335,7 +338,7 @@ const GEMINI_ENDPOINTS = IS_VERTEX_KEY
     : ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash']
         .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
 
-const SYSTEM_PROMPT = `Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
+const SYSTEM_PROMPT = `REGLE DE LANGUE: jawb DIMA b nfs lougha li ktbat biha Ilham (Darija b l7rouf latin, English, Français wla العربية). Ila khlatat, jawb b khlit dyalha. Ila tlbat tfsir b lougha mo3ayna, dirha. Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
 
 9awa3id:
 1. ay soual tswl (tabkh, derb, riyadiyat, tarikh, nasa2i7, chta, kolchi): jawb jawab s7i7 w mofid, mokhtasar, WLAKIN dima dkhel fih Noamane w 7obbo l Ilham: bli kaymout 3liha, kayhma9 3liha, kay3ti l7ayat bach t'koun far7ana. L7ob khass ybqa mrbout b l-jawab, mashi ghir jomla zayda f l'akhir.
@@ -493,7 +496,7 @@ async function askNoamane() {
 }
 
 // ========== CONFESSION BOOTH ==========
-const TELEGRAM_BOT_TOKEN = '8621884244:AAFKIBfhn4vz7F2iD_XeWG2W1TgRFho8KB4';
+const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_CHAT_ID = '5009133929';
 
 // Save confession to localStorage
@@ -540,6 +543,8 @@ function displayConfessionHistory() {
 // Returns { ok, error }. `error` explains WHY it failed (shown with ?debug and in test-ai.html).
 async function sendToTelegramDetailed(text) {
     const message = `💌 New Message from Ilhamati\n\n━━━━━━━━━━━━━━━\n\n"${text}"\n\n━━━━━━━━━━━━━━━\n\n💫 Sent from The Eternal Palace`;
+    if (window.palaceChat?.ready) return window.palaceChat.send(text);   // private chat = real backend
+    if (!TELEGRAM_BOT_TOKEN) return { ok: false, error: 'not logged in (no Telegram token configured)' };
     let lastError = 'unknown';
     for (let attempt = 0; attempt < 2; attempt++) {          // one automatic retry on network hiccups
         const ctrl = new AbortController();

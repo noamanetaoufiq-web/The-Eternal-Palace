@@ -1,14 +1,14 @@
 // The Eternal Palace - Service Worker
 // Version 1.0.0
 
-const CACHE_NAME = 'eternal-palace-v10';
+const CACHE_NAME = 'eternal-palace-v11';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './extras.jsx',
-  './agent.js',
+  './agent.js', './palace.js',
   './config.js',
   './admin.html',
   './icon.png',
@@ -145,3 +145,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('[Service Worker] Loaded');
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((l) => l.length ? l[0].focus() : clients.openWindow('./')));
+});

@@ -282,7 +282,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     };
     row.insertBefore(btn, row.lastElementChild); row.appendChild(input);
     history.forEach(m => addMessage(m.parts[0].text, m.role === 'user'));
-    renderMemories(); listenMemories();
+    renderMemories(); firebase.auth().onAuthStateChanged((u) => { if (u) listenMemories(); });
   }
 
 

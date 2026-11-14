@@ -28,6 +28,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
     <!-- Floating Hearts Background -->
@@ -47,6 +48,10 @@
                 <div class="form-group">
                     <label class="form-label">🔐 Question 1: Chno smiya li msmiha 3lk?</label>
                     <input type="text" id="securityAnswer" class="form-input" placeholder="Jawab hna...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">🔑 Password / Kelmt s-sir</label>
+                    <input type="password" id="securityPassword" class="form-input" placeholder="••••••••" autocomplete="current-password">
                 </div>
                 <button class="verify-btn" onclick="verifyAnswer()">
                     Verify 🎀
@@ -821,6 +826,7 @@
     <script src="script.js"></script>
     <script src="config.js"></script>
     <script src="agent.js"></script>
+    <script src="palace.js"></script>
     <script type="text/babel" src="extras.jsx"></script>
 
     <!-- Miss You Popup -->
