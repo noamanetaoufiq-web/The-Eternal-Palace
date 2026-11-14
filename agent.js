@@ -149,7 +149,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
 
   // ---------- model loop ----------
   async function gem(contents) {
-    await keysReady(); if (!GEMINI_API_KEY) return null;
+    await keysReady(); if (!GEMINI_API_KEY || window.__geminiBad) return null;
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT + TOOL_RULES }] }, contents, tools: TOOLS,
       generationConfig: { temperature: 0.9, maxOutputTokens: 1200, topP: 0.95 }
@@ -158,7 +158,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       const label = endpoint.split('/').pop();
       try {
         const r = await geminiFetch(endpoint, body);
-        if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${label} -> HTTP ${r.status}`, d); logErr(`gemini ${label}: HTTP ${r.status} ${d}`); continue; }
+        if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${label} -> HTTP ${r.status}`, d); logErr(`gemini ${label}: HTTP ${r.status} ${d}`); if (r.status === 401 || r.status === 403) { window.__geminiBad = true; return null; } continue; }
         const data = await r.json(); if (data?.candidates?.[0]?.content) return data.candidates[0].content;
         console.warn(`[AI] ${label} empty`, data?.promptFeedback);
       } catch (e) { console.error(`[AI] ${label} error:`, e); logErr(`gemini ${label}: ${e.message} (CORS/network)`); }
@@ -253,7 +253,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     const others = otherProviders(), by = (n) => others.find(x => x.name === n);
     const oa = (p) => (t, m) => runOpenAI(p, t, m);
     if (CODE_RE.test(text || '') && by('codestral')) add('codestral', oa(by('codestral')));
-    if (GEMINI_API_KEY) add('gemini', runGemini);
+    if (GEMINI_API_KEY && !window.__geminiBad) add('gemini', runGemini);
     if (media?.kind !== 'video') {
       for (const p of await groqProviders()) { if (media?.kind === 'image' && !/llama-4/.test(p.model)) continue; add(p.name, async (t, m) => { const o = await runOpenAI(p, t, m); if (!o) benched.set(p.model, Date.now() + 600000); return o; }); }
       for (const n of ['openrouter', 'mistral-small']) if (by(n)) add(n, oa(by(n)));
@@ -297,12 +297,12 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       for (const ep of GEMINI_ENDPOINTS) {
         const name = ep.split('/').pop().split(':')[0];
         try { const r = await geminiFetch(ep, body);
-          if (r.ok) { out.push('Gemini (' + name + '): khdam'); ok = true; break; }
+          if (r.ok) { out.push('Gemini (' + name + '): khdam'); ok = true; window.__geminiBad = false; break; }
           let msg = ''; try { msg = (await r.json()).error.message; } catch { msg = ''; }
           last = name + ' HTTP ' + r.status + (msg ? ' ' + msg.slice(0, 110) : ''); }
         catch (e) { last = 'network/CORS: ' + e.message; }
       }
-      if (!ok) out.push('Gemini: ma-khdamch (' + last + ')');
+      if (!ok) out.push('Gemini: ma-khdamch (' + last + '). Jib key jdid mn AI Studio w 7ettha f keys.html');
     }
     const all = [...await groqProviders(), ...otherProviders()];
     for (const p of all.slice(0, 8)) {

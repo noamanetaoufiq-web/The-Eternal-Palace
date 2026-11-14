@@ -17,44 +17,86 @@
 
   const style = document.createElement('style');
   style.textContent = `
-  #pcBtn{position:fixed;left:14px;bottom:14px;z-index:9998;width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,#ff6b9d,#ffb6c1);font-size:26px;cursor:pointer;box-shadow:0 8px 24px #0008}
+  #pcBtn{position:fixed;left:14px;bottom:14px;z-index:9998;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(135deg,#ff6b9d,#e8b4a0);font-size:26px;cursor:pointer;box-shadow:0 8px 24px #0008;animation:pcPulse 2.4s infinite}
+  @keyframes pcPulse{0%{box-shadow:0 0 0 0 #ff6b9d99,0 8px 24px #0008}70%{box-shadow:0 0 0 18px #ff6b9d00,0 8px 24px #0008}100%{box-shadow:0 0 0 0 #ff6b9d00,0 8px 24px #0008}}
   #pcBadge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:2px 6px;display:none}
-  #pcPanel{position:fixed;left:10px;bottom:80px;z-index:9998;width:min(360px,calc(100vw - 20px));height:min(520px,70vh);background:#1a0a2e;border:1px solid #ff6b9d;border-radius:18px;display:none;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px #000b;color:#fff;font-family:inherit}
-  #pcPanel.open{display:flex}
-  #pcMsgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
-  .pcm{max-width:80%;padding:8px 12px;border-radius:14px;font-size:.92rem;word-break:break-word}
-  .pcm.me{align-self:flex-end;background:linear-gradient(135deg,#ff6b9d,#ffb6c1);color:#2a0a1e}
-  .pcm.them{align-self:flex-start;background:#4a3558}
-  .pcm small{display:block;opacity:.6;font-size:.65rem;margin-top:2px}
-  #pcBar{display:flex;flex-wrap:wrap;gap:2px;padding:4px 8px;border-top:1px solid #ff6b9d33}
-  #pcBar button,#pcMood button{background:none;border:0;font-size:1.25rem;cursor:pointer;padding:2px 4px}
-  #pcMood{display:flex;justify-content:space-around;padding:6px;border-bottom:1px solid #ff6b9d33}
-  #pcMood button.sel{background:#ff6b9d44;border-radius:10px}
-  #pcRow{display:flex;gap:6px;padding:8px}
-  #pcIn{flex:1;border-radius:20px;border:1px solid #ff6b9d88;background:#2a1540;color:#fff;padding:8px 12px;font-size:1rem}
-  #pcSend{border:0;border-radius:20px;background:#ff6b9d;color:#fff;padding:0 14px;cursor:pointer}
+  #pcPanel{position:fixed;inset:0;z-index:9999;height:100vh;height:100dvh;display:flex;flex-direction:column;background:radial-gradient(circle at 15% 0%,#5a2d63 0%,#1a0a2e 62%);color:#fff;font-family:inherit;visibility:hidden;clip-path:circle(0px at var(--ox,40px) var(--oy,90vh));transition:clip-path .7s cubic-bezier(.7,0,.3,1),visibility 0s .7s}
+  #pcPanel.open{visibility:visible;clip-path:circle(160% at var(--ox,40px) var(--oy,90vh));transition:clip-path .9s cubic-bezier(.2,.8,.2,1),visibility 0s}
+  body.pc-open{overflow:hidden}
+  #pcHead{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(26,10,46,.85);border-bottom:1px solid #e8b4a055}
+  #pcBack{background:none;border:0;color:#fff;font-size:1.6rem;cursor:pointer}
+  #pcAv{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:linear-gradient(135deg,#ff6b9d,#e8b4a0);transition:transform .3s}
+  #pcName{font-size:1.05rem}#pcSub{display:block;opacity:.75;font-size:.78rem}
+  #pcMood{display:flex;justify-content:space-around;padding:6px;border-bottom:1px solid #ff6b9d33;background:rgba(255,255,255,.03)}
+  #pcMood button{background:none;border:0;font-size:1.35rem;cursor:pointer;padding:3px 6px;border-radius:10px}
+  #pcMood button.sel{background:#ff6b9d44}
+  #pcMsgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+  .pcm{max-width:78%;padding:9px 13px;border-radius:16px;font-size:.95rem;word-break:break-word;animation:pcIn .35s ease both}
+  @keyframes pcIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+  .pcm.me{align-self:flex-end;background:linear-gradient(135deg,#ff6b9d,#ffb6c1);color:#2a0a1e;border-bottom-right-radius:4px}
+  .pcm.them{align-self:flex-start;background:#4a3558;border-bottom-left-radius:4px}
+  .pcm small{display:block;opacity:.6;font-size:.65rem;margin-top:3px;text-align:right}
+  #pcBar{display:flex;gap:2px;padding:4px 8px;overflow-x:auto;border-top:1px solid #ff6b9d33}
+  #pcBar button{background:none;border:0;font-size:1.3rem;cursor:pointer;padding:2px 5px;flex:none}
+  #pcRow{display:flex;gap:8px;padding:8px 12px calc(12px + env(safe-area-inset-bottom,0px))}
+  #pcIn{flex:1;border-radius:22px;border:1px solid #ff6b9d88;background:#2a1540;color:#fff;padding:10px 14px;font-size:1rem}
+  #pcSend{border:0;border-radius:22px;background:linear-gradient(135deg,#ff6b9d,#e8b4a0);color:#2a0a1e;font-weight:600;padding:0 18px;cursor:pointer}
   #pcBanner{position:fixed;top:0;left:0;right:0;z-index:9997;text-align:center;padding:6px 10px;font-size:.9rem;color:#fff;display:none;letter-spacing:.05em}
-  #pcGlow{position:fixed;inset:0;z-index:9996;pointer-events:none;transition:box-shadow .6s}`;
+  #pcGlow{position:fixed;inset:0;z-index:9996;pointer-events:none;transition:box-shadow .6s}
+  .pcFly{position:fixed;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);animation:pcFly 1.2s ease-out forwards}
+  @keyframes pcFly{to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(40deg) scale(.4);opacity:0}}
+  #pcSplash{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;animation:pcSplash 1.5s ease both}
+  #pcSplash b{font-size:clamp(2.2rem,9vw,4rem);background:linear-gradient(135deg,#ff6b9d,#ffe0c8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px #ff6b9d)}
+  #pcSplash span{margin-top:8px;color:#ffd9e4;font-size:1rem}
+  @keyframes pcSplash{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.08)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}`;
   document.head.appendChild(style);
 
+  function burst(x, y) {
+    const set = ['💗', '💖', '💕', '✨', '💘', '🌹'];
+    for (let i = 0; i < 26; i++) {
+      const s = mk('span', '', set[i % set.length]), a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 240;
+      s.className = 'pcFly';
+      s.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 70}px;font-size:${16 + Math.random() * 20}px;animation-delay:${Math.random() * .15}s`;
+      document.body.appendChild(s); setTimeout(() => s.remove(), 1500);
+    }
+  }
+  function splash() {
+    const d = mk('div'); d.id = 'pcSplash';
+    d.append(mk('b', '', 'Binatna 💞'), mk('span', '', 'ghorfa dyalna, ghir jouj 🔒'));
+    document.body.appendChild(d); setTimeout(() => d.remove(), 1600);
+  }
+  const closeRoom = () => { panelOpen = false; $('pcPanel')?.classList.remove('open'); document.body.classList.remove('pc-open'); };
+
   function build() {
-    const btn = mk('button'); btn.id = 'pcBtn'; btn.textContent = '💬'; btn.setAttribute('aria-label', 'Chat');
+    const btn = mk('button'); btn.id = 'pcBtn'; btn.textContent = '💬'; btn.setAttribute('aria-label', 'Binatna');
     const badge = mk('span'); badge.id = 'pcBadge'; btn.appendChild(badge);
     const panel = mk('div'); panel.id = 'pcPanel';
+    const head = mk('div'); head.id = 'pcHead';
+    const back = mk('button', '', '←'); back.id = 'pcBack'; back.setAttribute('aria-label', 'Rje3'); back.onclick = closeRoom;
+    const av = mk('div', '', '💖'); av.id = 'pcAv';
+    const meta = mk('div'); const nm = mk('b'); nm.id = 'pcName'; const sub = mk('small'); sub.id = 'pcSub'; meta.append(nm, sub);
+    head.append(back, av, meta);
     const mood = mk('div'); mood.id = 'pcMood';
     Object.entries(MOODS).forEach(([k, m]) => { const b = mk('button', '', m.e); b.title = m.t; b.dataset.k = k; b.onclick = () => setMood(k); mood.appendChild(b); });
     const msgs = mk('div'); msgs.id = 'pcMsgs';
     const bar = mk('div'); bar.id = 'pcBar';
     const row = mk('div'); row.id = 'pcRow';
-    const inp = mk('input'); inp.id = 'pcIn'; inp.placeholder = 'Ktb hna / Write here…'; inp.maxLength = 900;
+    const inp = mk('input'); inp.id = 'pcIn'; inp.placeholder = 'Ktb hna / Write here'; inp.maxLength = 900; inp.autocomplete = 'off';
     const send = mk('button'); send.id = 'pcSend'; send.textContent = 'Send 💌';
     EMOJIS.forEach(e => { const b = mk('button', '', e); b.onclick = () => { inp.value += e; inp.focus(); }; bar.appendChild(b); });
     const go = () => { const t = inp.value.trim(); if (t) { api.send(t); inp.value = ''; } };
     send.onclick = go; inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    row.append(inp, send); panel.append(mood, msgs, bar, row);
+    row.append(inp, send); panel.append(head, mood, msgs, bar, row);
     const banner = mk('div'); banner.id = 'pcBanner'; const glow = mk('div'); glow.id = 'pcGlow';
     document.body.append(btn, panel, banner, glow);
-    btn.onclick = () => { panelOpen = !panelOpen; panel.classList.toggle('open', panelOpen); if (panelOpen) { unread = 0; badge.style.display = 'none'; localStorage.setItem('pcRead', Date.now()); askNotif(); msgs.scrollTop = msgs.scrollHeight; } };
+    btn.onclick = () => {
+      const r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      panel.style.setProperty('--ox', x + 'px'); panel.style.setProperty('--oy', y + 'px');
+      burst(x, y); splash();
+      panelOpen = true; panel.classList.add('open'); document.body.classList.add('pc-open');
+      unread = 0; badge.style.display = 'none'; localStorage.setItem('pcRead', Date.now()); askNotif();
+      setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 400);
+    };
   }
 
   function askNotif() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
@@ -81,6 +123,7 @@
     const ban = $('pcBanner'), glow = $('pcGlow'); if (!ban) return;
     const d = MOODS[m && m.k];
     if (!d) { ban.style.display = 'none'; glow.style.boxShadow = 'none'; return; }
+    if ($('pcAv')) { $('pcAv').textContent = d.e; $('pcSub').textContent = d.t; }
     ban.style.display = 'block'; ban.style.background = d.c + 'dd';
     ban.textContent = `${d.ex} ${NAMES[who]}: ${d.t} ${d.ex}`;
     glow.style.boxShadow = m.k === 'angry' || m.k === 'sad' ? `inset 0 0 90px ${d.c}aa` : `inset 0 0 50px ${d.c}55`;
@@ -104,6 +147,7 @@
   function start(u) {
     uid = u.uid; me = u.email.split('@')[0]; other = me === 'noamane' ? 'ilhamati' : 'noamane';
     if (!$('pcBtn')) build();
+    $('pcName').textContent = NAMES[other]; $('pcSub').textContent = '🔒 Binatna ghir';
     const ref = db().ref('chats/main').orderByChild('t').limitToLast(100);
     ref.once('value').then((s) => {
       s.forEach(c => addMsg(c.val()));
@@ -127,4 +171,4 @@ window.toggleHeartChat = (open) => {
   if (open) { const b = document.getElementById('chatBox'); b.scrollTop = b.scrollHeight; document.getElementById('userQuestion')?.focus(); }
 };
 window.heartAsk = (t) => { const i = document.getElementById('userQuestion'); if (!i) return; i.value = t; window.askNoamane?.(); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.toggleHeartChat(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { window.toggleHeartChat(false); document.getElementById('pcBack')?.click(); } });

@@ -349,7 +349,7 @@ firebase.auth().onAuthStateChanged(async (u) => {
 });
 const keysReady = () => Promise.race([window.aiKeysReady, new Promise(r => setTimeout(r, 6000))]);
 
-const GEMINI_ENDPOINTS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-lite-latest']
+const GEMINI_ENDPOINTS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash']
     .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
 
 const SYSTEM_PROMPT = `REGLE DE LANGUE: jawb DIMA b nfs lougha li ktbat biha Ilham (Darija b l7rouf latin, English, Français wla العربية). Ila khlatat, jawb b khlit dyalha. Ila tlbat tfsir b lougha mo3ayna, dirha. STYLE (mohim bzzaf): hder b darija maghribiya tabi3iya kif kay-hder wa7ed mn Casablanca, b l7rouf latin (3 7 9 5 8 2), b jomal 9sar w wad7in. Ma-tst3mlch klmat mkhtra3a wla tarjama 7arfiya, ila ma-3rftich klma b darija 9ol-ha b tari9a okhra. Ma-tst3mlch symboles b7al * # _ - — … wla markdown wla listes b nojoum. Emojis: mn 1 l 3 f l-jomla kamla, kol wa7ed f blasto 3la 7asab l-m3na (🍞 khobz, 😂 dhk, 🥺 7nana, 💖 7ob), machi f kol klma. Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
@@ -399,7 +399,7 @@ async function geminiFetch(endpoint, body) {
 
 // Returns the model text, or null if every model failed (callers then use a fallback).
 async function callGeminiAPI(userText, options = {}) {
-    await keysReady(); if (!GEMINI_API_KEY) return null;
+    await keysReady(); if (!GEMINI_API_KEY || window.__geminiBad) return null;
     const body = {
         systemInstruction: { parts: [{ text: options.system || SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text: userText }] }],
@@ -417,6 +417,7 @@ async function callGeminiAPI(userText, options = {}) {
             if (!response.ok) {
                 const detail = await response.text().catch(() => '');
                 console.warn(`[AI] ${label} -> HTTP ${response.status}`, detail.slice(0, 400));
+                if (response.status === 401 || response.status === 403) { window.__geminiBad = true; return null; }
                 continue;
             }
             const data = await response.json();
