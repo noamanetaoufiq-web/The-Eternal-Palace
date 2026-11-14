@@ -344,7 +344,7 @@ firebase.auth().onAuthStateChanged(async (u) => {
         const v = (await database.ref('config/ai').once('value')).val() || {};
         GEMINI_API_KEY = v.gemini || '';
         window.AI_KEYS = { openrouter: v.openrouter || '', groq: v.groq || '', mistral: v.mistral || '', youtube: v.youtube || '' };
-    } catch (e) { console.warn('[AI] could not read keys from Firebase:', e.message); }
+    } catch (e) { window.__keysErr = e.message; console.warn('[AI] could not read keys from Firebase:', e.message); }
     window.__resolveAiKeys();
 });
 const keysReady = () => Promise.race([window.aiKeysReady, new Promise(r => setTimeout(r, 6000))]);

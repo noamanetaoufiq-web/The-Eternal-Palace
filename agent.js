@@ -286,19 +286,25 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   window.diagAI = async () => {
     addMessage('Kan-tchekki l-AI dyalk, tsenna chwiya...');
     const out = [];
-    try {
+    await keysReady();
+    const have = ['gemini', 'groq', 'openrouter', 'mistral'].filter(k => k === 'gemini' ? GEMINI_API_KEY : CFG[k]);
+    if (window.__keysErr) out.push('Firebase: ma-9drtch n9ra l-keys (' + window.__keysErr + '). Ghaliban l-rules jdad ma-tpublishawch.');
+    else if (!have.length) out.push('Firebase khddam walakin ma-kaynach 7ta key f config/ai. Dkhel l keys.html w 7ett l-keys.');
+    else out.push('Keys li lqit f Firebase: ' + have.join(', '));
+    if (GEMINI_API_KEY) {
       const body = { contents: [{ role: 'user', parts: [{ text: 'Say hi in one word' }] }], generationConfig: { maxOutputTokens: 50 } };
       let ok = false, last = '';
       for (const ep of GEMINI_ENDPOINTS) {
-        try { const r = await geminiFetch(ep, body); if (r.ok) { out.push('Gemini (' + ep.split('/').pop().split(':')[0] + '): khdam'); ok = true; break; } last = 'HTTP ' + r.status + ' ' + (await r.text()).slice(0, 120); }
+        const name = ep.split('/').pop().split(':')[0];
+        try { const r = await geminiFetch(ep, body);
+          if (r.ok) { out.push('Gemini (' + name + '): khdam'); ok = true; break; }
+          let msg = ''; try { msg = (await r.json()).error.message; } catch { msg = ''; }
+          last = name + ' HTTP ' + r.status + (msg ? ' ' + msg.slice(0, 110) : ''); }
         catch (e) { last = 'network/CORS: ' + e.message; }
       }
       if (!ok) out.push('Gemini: ma-khdamch (' + last + ')');
-    } catch (e) { out.push('Gemini: ' + e.message); }
-    await keysReady();
-    if (!GEMINI_API_KEY) out.push('Gemini: ma-kaynach key f Firebase (config/ai/gemini)');
+    }
     const all = [...await groqProviders(), ...otherProviders()];
-    if (!all.length) out.push('Groq / OpenRouter / Mistral: ma-kaynach ta key f Firebase');
     for (const p of all.slice(0, 8)) {
       try { const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + p.key }, body: JSON.stringify({ model: p.model, max_tokens: 20, messages: [{ role: 'user', content: 'hi' }] }) });
         out.push(p.name + ': ' + (r.ok ? 'khdam' : 'ma-khdamch (HTTP ' + r.status + (r.status === 429 ? ', limit' : r.status === 401 ? ', key ghalat wla t-7ayydat' : '') + ')')); }
