@@ -332,8 +332,23 @@ function calculateLove() {
 }
 
 // ========== ASK NOAMANE'S HEART - AI POWERED ==========
-const GEMINI_API_KEY = 'AQ.Ab8RN6KXRd0Wu3N_Ez3mcKN22NkQfofNcw2VKgw7XsARgfFrNA';
+let GEMINI_API_KEY = '';   // loaded from Firebase (config/ai) after login, never stored in GitHub
 // Keys from AI Studio (AIza... or the newer AQ.... "auth keys") both use the Gemini API endpoint.
+
+// ---- AI keys live in Firebase (config/ai), readable only by the two logged-in users ----
+window.AI_KEYS = {};
+window.aiKeysReady = new Promise((res) => { window.__resolveAiKeys = res; });
+firebase.auth().onAuthStateChanged(async (u) => {
+    if (!u) return;
+    try {
+        const v = (await database.ref('config/ai').once('value')).val() || {};
+        GEMINI_API_KEY = v.gemini || '';
+        window.AI_KEYS = { openrouter: v.openrouter || '', groq: v.groq || '', mistral: v.mistral || '', youtube: v.youtube || '' };
+    } catch (e) { console.warn('[AI] could not read keys from Firebase:', e.message); }
+    window.__resolveAiKeys();
+});
+const keysReady = () => Promise.race([window.aiKeysReady, new Promise(r => setTimeout(r, 6000))]);
+
 const GEMINI_ENDPOINTS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-lite-latest']
     .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
 
@@ -384,6 +399,7 @@ async function geminiFetch(endpoint, body) {
 
 // Returns the model text, or null if every model failed (callers then use a fallback).
 async function callGeminiAPI(userText, options = {}) {
+    await keysReady(); if (!GEMINI_API_KEY) return null;
     const body = {
         systemInstruction: { parts: [{ text: options.system || SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text: userText }] }],

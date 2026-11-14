@@ -149,6 +149,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
 
   // ---------- model loop ----------
   async function gem(contents) {
+    await keysReady(); if (!GEMINI_API_KEY) return null;
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT + TOOL_RULES }] }, contents, tools: TOOLS,
       generationConfig: { temperature: 0.9, maxOutputTokens: 1200, topP: 0.95 }
@@ -185,15 +186,35 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
 
 
   // ---------- other providers (OpenAI-compatible): OpenRouter free router + Mistral ----------
-  const CFG = window.AI_KEYS || {};
+  const CFG = new Proxy({}, { get: (_, k) => (window.AI_KEYS || {})[k] });   // keys arrive from Firebase after login
   const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+  const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
   const lowerTypes = (o) => JSON.parse(JSON.stringify(o).replace(/"type":"(OBJECT|STRING)"/g, (_, t) => `"type":"${t.toLowerCase()}"`));
   const OA_TOOLS = lowerTypes(TOOLS[0].functionDeclarations).map(f => ({ type: 'function', function: f }));
-  const PROVIDERS = [
-    { name: 'openrouter', url: 'https://openrouter.ai/api/v1/chat/completions', key: CFG.openrouter, model: 'openrouter/free' },
-    { name: 'mistral-small', url: MISTRAL_URL, key: CFG.mistral, model: 'mistral-small-latest' },
-    { name: 'codestral', url: MISTRAL_URL, key: CFG.mistral, model: 'codestral-latest' }
-  ].filter(p => p.key);
+  const otherProviders = () => [
+    CFG.openrouter && { name: 'openrouter', url: 'https://openrouter.ai/api/v1/chat/completions', key: CFG.openrouter, model: 'openrouter/free' },
+    CFG.mistral && { name: 'mistral-small', url: MISTRAL_URL, key: CFG.mistral, model: 'mistral-small-latest' },
+    CFG.mistral && { name: 'codestral', url: MISTRAL_URL, key: CFG.mistral, model: 'codestral-latest' }
+  ].filter(Boolean);
+
+  // Groq: ask Groq which chat models exist right now, best first; a model that fails is skipped for 10 minutes.
+  const GROQ_PREF = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'moonshotai/kimi-k2-instruct', 'llama-3.1-8b-instant'];
+  const GROQ_SKIP = /whisper|tts|guard|safeguard|orpheus|compound|embed/i;
+  let groqCache = null; const benched = new Map();
+  async function groqModels() {
+    if (groqCache) return groqCache;
+    let ids = [];
+    try { const r = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: 'Bearer ' + CFG.groq } });
+      if (r.ok) ids = (await r.json()).data.map(m => m.id).filter(id => !GROQ_SKIP.test(id)); else logErr('groq models list: HTTP ' + r.status); }
+    catch (e) { logErr('groq models list: ' + e.message); }
+    const ordered = [...GROQ_PREF.filter(m => !ids.length || ids.includes(m)), ...ids.filter(m => !GROQ_PREF.includes(m))];
+    if (ids.length) groqCache = ordered;
+    return ordered;
+  }
+  async function groqProviders() {
+    if (!CFG.groq) return [];
+    return (await groqModels()).filter(m => !(benched.get(m) > Date.now())).map(m => ({ name: 'groq:' + m, url: GROQ_URL, key: CFG.groq, model: m }));
+  }
   const clean = (t) => (t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
   async function oaCall(p, messages, withTools, maxTokens = 900) {
@@ -224,19 +245,27 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     return null;
   }
 
-  // Specialist routing: code questions go to Codestral first; images/video skip text-only models.
+  // Order: Gemini -> every working Groq model -> OpenRouter -> Mistral. Code questions try Codestral first.
   const CODE_RE = /\b(code|coding|python|javascript|js|html|css|react|bug|sql|api|script|program|programmation)\b/i;
-  function providerOrder(text, media) {
-    let names = CODE_RE.test(text || '') ? ['codestral', 'gemini', 'openrouter', 'mistral-small'] : ['gemini', 'openrouter', 'mistral-small', 'codestral'];
-    if (media?.kind === 'video') names = ['gemini'];
-    if (media?.kind === 'image') names = names.filter(n => n !== 'codestral');
-    return names.map(n => n === 'gemini' ? { name: n, run: runGemini } : (p => p && { name: n, run: (t, m) => runOpenAI(p, t, m) })(PROVIDERS.find(x => x.name === n))).filter(Boolean);
+  async function buildChain(text, media) {
+    const chain = [];
+    const add = (name, run) => chain.push({ name, run });
+    const others = otherProviders(), by = (n) => others.find(x => x.name === n);
+    const oa = (p) => (t, m) => runOpenAI(p, t, m);
+    if (CODE_RE.test(text || '') && by('codestral')) add('codestral', oa(by('codestral')));
+    if (GEMINI_API_KEY) add('gemini', runGemini);
+    if (media?.kind !== 'video') {
+      for (const p of await groqProviders()) { if (media?.kind === 'image' && !/llama-4/.test(p.model)) continue; add(p.name, async (t, m) => { const o = await runOpenAI(p, t, m); if (!o) benched.set(p.model, Date.now() + 600000); return o; }); }
+      for (const n of ['openrouter', 'mistral-small']) if (by(n)) add(n, oa(by(n)));
+      if (media?.kind !== 'image' && by('codestral') && !CODE_RE.test(text || '')) add('codestral', oa(by('codestral')));
+    }
+    return chain;
   }
   async function runAgent(text, media) {
-    turnMedia = media;
-    for (const p of providerOrder(text, media)) {
+    turnMedia = media; await keysReady();
+    for (const p of await buildChain(text, media)) {
       const out = await p.run(text, media);
-      if (out) { console.log(`[AI] answered by ${p.name}`); return out; }
+      if (out) { console.log(`[AI] answered by ${p.name}`); window.__aiBy = p.name; return out; }
     }
     return null;
   }
@@ -245,7 +274,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   const geminiPlain = window.callGeminiAPI;
   window.callGeminiAPI = async (text, opts = {}) => {
     const out = await geminiPlain(text, opts); if (out) return out;
-    for (const p of PROVIDERS.filter(x => x.name !== 'codestral')) {
+    for (const p of [...await groqProviders(), ...otherProviders().filter(x => x.name !== 'codestral')]) {
       const msg = await oaCall(p, [{ role: 'system', content: opts.system || SYSTEM_PROMPT }, { role: 'user', content: text }], false, opts.maxTokens || 300);
       if (msg && clean(msg.content)) return clean(msg.content);
     }
@@ -266,13 +295,15 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       }
       if (!ok) out.push('Gemini: ma-khdamch (' + last + ')');
     } catch (e) { out.push('Gemini: ' + e.message); }
-    if (!PROVIDERS.length) out.push('OpenRouter / Mistral: ma-kaynach key f config.js');
-    for (const p of PROVIDERS) {
+    await keysReady();
+    if (!GEMINI_API_KEY) out.push('Gemini: ma-kaynach key f Firebase (config/ai/gemini)');
+    const all = [...await groqProviders(), ...otherProviders()];
+    if (!all.length) out.push('Groq / OpenRouter / Mistral: ma-kaynach ta key f Firebase');
+    for (const p of all.slice(0, 8)) {
       try { const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + p.key }, body: JSON.stringify({ model: p.model, max_tokens: 20, messages: [{ role: 'user', content: 'hi' }] }) });
-        out.push(p.name + ': ' + (r.ok ? 'khdam' : 'ma-khdamch (HTTP ' + r.status + (r.status === 429 ? ', daba l-limit dyal nhar wla d9i9a wsel' : r.status === 401 ? ', key ghalat' : '') + ')')); }
+        out.push(p.name + ': ' + (r.ok ? 'khdam' : 'ma-khdamch (HTTP ' + r.status + (r.status === 429 ? ', limit' : r.status === 401 ? ', key ghalat wla t-7ayydat' : '') + ')')); }
       catch (e) { out.push(p.name + ': network/CORS ' + e.message); }
     }
-    if (!CFG.mistral) out.push('Mistral: key khawya f config.js (mazal ma-t7et-ch)');
     addMessage(out.join('\n'));
   };
 
