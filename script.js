@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
 // ========== MISS YOU FEATURE ==========
-const MISS_YOU_TELEGRAM_TOKEN = '8720613063:AAE1MR4dmfbcRaK8vwfAFQGO1AcXSmJOI8s';
+const MISS_YOU_TELEGRAM_TOKEN = '8621884244:AAFKIBfhn4vz7F2iD_XeWG2W1TgRFho8KB4';
 const MISS_YOU_CHAT_ID = '5009133929';
 let missYouCooldown = false;
 
@@ -493,7 +493,7 @@ async function askNoamane() {
 }
 
 // ========== CONFESSION BOOTH ==========
-const TELEGRAM_BOT_TOKEN = '8720613063:AAE1MR4dmfbcRaK8vwfAFQGO1AcXSmJOI8s';
+const TELEGRAM_BOT_TOKEN = '8621884244:AAFKIBfhn4vz7F2iD_XeWG2W1TgRFho8KB4';
 const TELEGRAM_CHAT_ID = '5009133929';
 
 // Save confession to localStorage
@@ -537,27 +537,38 @@ function displayConfessionHistory() {
 }
 
 // Send message to Telegram
-async function sendToTelegram(text) {
+// Returns { ok, error }. `error` explains WHY it failed (shown with ?debug and in test-ai.html).
+async function sendToTelegramDetailed(text) {
     const message = `💌 New Message from Ilhamati\n\n━━━━━━━━━━━━━━━\n\n"${text}"\n\n━━━━━━━━━━━━━━━\n\n💫 Sent from The Eternal Palace`;
-    
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                chat_id: TELEGRAM_CHAT_ID,
-                text: message
-            })
-        });
-        
-        const data = await response.json();
-        return data.ok;
-    } catch (error) {
-        console.error('Telegram error:', error);
-        return false;
+    let lastError = 'unknown';
+    for (let attempt = 0; attempt < 2; attempt++) {          // one automatic retry on network hiccups
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10000);
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message }),
+                signal: ctrl.signal
+            });
+            clearTimeout(timer);
+            const data = await response.json().catch(() => ({}));
+            if (data.ok) return { ok: true };
+            lastError = `telegram HTTP ${response.status}: ${data.description || 'no description'}`;
+            console.warn('[Telegram]', lastError);
+            if (response.status >= 400 && response.status < 500 && response.status !== 429) break; // token/chat problem: retry is useless
+        } catch (error) {
+            clearTimeout(timer);
+            lastError = `telegram network error: ${error.name === 'AbortError' ? 'timeout' : error.message}`;
+            console.warn('[Telegram]', lastError);
+        }
+        await new Promise(r => setTimeout(r, 800));
     }
+    return { ok: false, error: lastError };
+}
+
+async function sendToTelegram(text) {
+    return (await sendToTelegramDetailed(text)).ok;
 }
 
 async function sendConfession() {

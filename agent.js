@@ -88,6 +88,24 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       grid.appendChild(d);
     });
   }
+  // ---------- outbox: messages that failed to reach Telegram are kept and retried ----------
+  const OUT_KEY = 'palaceOutbox';
+  const queueOutbox = (message) => { const q = jget(OUT_KEY, []); q.push({ message, t: Date.now() }); jset(OUT_KEY, q.slice(-10)); };
+  let flushing = false;
+  async function flushOutbox() {
+    if (flushing) return; flushing = true;
+    try {
+      let q = jget(OUT_KEY, []);
+      while (q.length) {
+        const r = await sendToTelegramDetailed(q[0].message);
+        if (!r.ok) { logErr('outbox: ' + r.error); break; }
+        q.shift(); jset(OUT_KEY, q);
+      }
+    } finally { flushing = false; }
+  }
+  window.addEventListener('online', flushOutbox);
+  setTimeout(flushOutbox, 3000);
+
   const tools = {
     async play_music({ song = '' }) {
       const cards = [...document.querySelectorAll('.song-card')];
@@ -111,9 +129,13 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       renderMemories(); return { ok: true, saved: 'this device only' };
     },
     async send_to_noamane({ message }) {
-      if (Date.now() - lastSend < 30000) return { ok: false, error: 'wait 30 seconds between messages' };
-      lastSend = Date.now(); const ok = await sendToTelegram(message);
-      if (ok) showHeartsRain(); return { ok };
+      const wait = 30000 - (Date.now() - lastSend);
+      if (wait > 0) return { ok: false, throttled: true, error: `wait ${Math.ceil(wait / 1000)} seconds between messages` };
+      const r = await sendToTelegramDetailed(message);
+      if (r.ok) { lastSend = Date.now(); showHeartsRain(); flushOutbox(); return { ok: true }; }
+      logErr('send_to_noamane: ' + r.error);
+      queueOutbox(message);                      // keep it safe, retry later automatically
+      return { ok: false, queued: true, error: r.error };
     },
     add_love_note({ text }) {
       const notes = jget('ilhamNoamaneNotes', []); notes.push(text); jset('ilhamNoamaneNotes', notes);
@@ -282,7 +304,9 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     }
     if (hasWord(toks, W.send) && hasWord(toks, W.noa) || (hasWord(toks, ['miss']) && hasWord(toks, ['you']))) {
       const r = await tools.send_to_noamane({ message: `Ilham kat9ol lik: ${text}` });
-      return r.ok ? 'Siftha l Noamane 💖' : 'Ma-9dertch nsift daba, 3awdi mn ba3d 💕';
+      if (r.ok) return 'Siftha l Noamane 💖';
+      if (r.throttled) return 'Sber chwiya a hbibti, katsift bzzaf mra wa7da 💕 3awdi mn ba3d 30 tanya.';
+      return 'Ma-wslatch daba (chi mochkil f l-connexion), walakin 7fedtha 💖 ghadi tsift tlqa2iyan mnin t3awd t7el l-site.';
     }
     if (hasWord(toks, W.music)) {
       const query = (text || '').split(/\s+/).filter(w => !hasWord([w.toLowerCase()], W.music.concat(['li', 'liya', '3tini', 'l', 'dir', 'bghit', 'bghiti', 'chof', 'f', 'youtube', 'yt']))).join(' ').trim();

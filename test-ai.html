@@ -6,6 +6,7 @@
 <h2>🛠 AI connection test</h2>
 <p>Click the button, wait ~10 seconds, then send a screenshot of the result.</p>
 <button id="go">Run test</button>
+<button id="tg" style="margin-left:8px;background:#7c3aed">Test Telegram</button>
 <pre id="out">Waiting...</pre>
 <script src="config.js"></script>
 <script>
@@ -41,5 +42,22 @@ document.getElementById('go').onclick = async () => {
   }
   if (K.mistral) for (const m of ['mistral-small-latest', 'codestral-latest']) await probe('Mistral ' + m, 'https://api.mistral.ai/v1/chat/completions', { Authorization: 'Bearer ' + K.mistral }, oa(m), op);
   out.innerHTML += '\nDone.';
+};
+
+document.getElementById('tg').onclick = async () => {
+  out.innerHTML = '';
+  const src = await (await fetch('script.js?' + Date.now())).text();
+  const tok = (src.match(/TELEGRAM_BOT_TOKEN = '([^']+)'/) || [])[1];
+  const chat = (src.match(/TELEGRAM_CHAT_ID = '([^']+)'/) || [])[1];
+  line(!!tok, 'Token found in script.js: ' + (tok ? tok.split(':')[0] + ':...' : 'NO'));
+  line(!!chat, 'Chat id: ' + (chat || 'NO'));
+  if (!tok) return;
+  try {
+    const me = await (await fetch(`https://api.telegram.org/bot${tok}/getMe`)).json();
+    line(me.ok, me.ok ? 'getMe OK -> bot @' + me.result.username : 'getMe FAILED -> ' + me.description + '  (401 = token revoked/wrong)');
+    if (!me.ok) return;
+    const s = await (await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text: '✅ test-ai.html: Telegram works' }) })).json();
+    line(s.ok, s.ok ? 'sendMessage OK (check your Telegram)' : 'sendMessage FAILED -> ' + s.description + '  (chat not found = open the bot and press /start, or wrong chat id)');
+  } catch (e) { line(false, 'Network/CORS error: ' + e.message); }
 };
 </script></body></html>
