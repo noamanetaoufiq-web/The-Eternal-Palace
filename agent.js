@@ -151,12 +151,12 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   async function gem(contents) {
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT + TOOL_RULES }] }, contents, tools: TOOLS,
-      generationConfig: { temperature: 0.9, maxOutputTokens: 500, topP: 0.95 }
+      generationConfig: { temperature: 0.9, maxOutputTokens: 1200, topP: 0.95 }
     };
     for (const endpoint of GEMINI_ENDPOINTS) {
       const label = endpoint.split('/').pop();
       try {
-        const r = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const r = await geminiFetch(endpoint, body);
         if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${label} -> HTTP ${r.status}`, d); logErr(`gemini ${label}: HTTP ${r.status} ${d}`); continue; }
         const data = await r.json(); if (data?.candidates?.[0]?.content) return data.candidates[0].content;
         console.warn(`[AI] ${label} empty`, data?.promptFeedback);
@@ -196,7 +196,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   ].filter(p => p.key);
   const clean = (t) => (t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-  async function oaCall(p, messages, withTools, maxTokens = 500) {
+  async function oaCall(p, messages, withTools, maxTokens = 900) {
     try {
       const body = { model: p.model, messages, max_tokens: maxTokens, temperature: 0.9 };
       if (withTools) body.tools = OA_TOOLS;
@@ -250,6 +250,30 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       if (msg && clean(msg.content)) return clean(msg.content);
     }
     return null;
+  };
+
+
+  // ---------- on-screen AI check (no need for test-ai.html) ----------
+  window.diagAI = async () => {
+    addMessage('Kan-tchekki l-AI dyalk, tsenna chwiya...');
+    const out = [];
+    try {
+      const body = { contents: [{ role: 'user', parts: [{ text: 'Say hi in one word' }] }], generationConfig: { maxOutputTokens: 50 } };
+      let ok = false, last = '';
+      for (const ep of GEMINI_ENDPOINTS) {
+        try { const r = await geminiFetch(ep, body); if (r.ok) { out.push('Gemini (' + ep.split('/').pop().split(':')[0] + '): khdam'); ok = true; break; } last = 'HTTP ' + r.status + ' ' + (await r.text()).slice(0, 120); }
+        catch (e) { last = 'network/CORS: ' + e.message; }
+      }
+      if (!ok) out.push('Gemini: ma-khdamch (' + last + ')');
+    } catch (e) { out.push('Gemini: ' + e.message); }
+    if (!PROVIDERS.length) out.push('OpenRouter / Mistral: ma-kaynach key f config.js');
+    for (const p of PROVIDERS) {
+      try { const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + p.key }, body: JSON.stringify({ model: p.model, max_tokens: 20, messages: [{ role: 'user', content: 'hi' }] }) });
+        out.push(p.name + ': ' + (r.ok ? 'khdam' : 'ma-khdamch (HTTP ' + r.status + (r.status === 429 ? ', daba l-limit dyal nhar wla d9i9a wsel' : r.status === 401 ? ', key ghalat' : '') + ')')); }
+      catch (e) { out.push(p.name + ': network/CORS ' + e.message); }
+    }
+    if (!CFG.mistral) out.push('Mistral: key khawya f config.js (mazal ma-t7et-ch)');
+    addMessage(out.join('\n'));
   };
 
   // ---------- media + UI ----------
@@ -327,6 +351,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     removeTypingIndicator();
     if (!reply && /debug/.test(location.search)) addMessage('⚠️ ' + (ERR.slice(-4).join(' | ') || 'no error captured'));
     const local = reply ? null : await localIntent(text, media);
+    const st = document.getElementById('heartStatus'); if (st) st.textContent = reply ? 'online, kayjawb lik b 7ob 💖' : 'offline daba, jawab 9sir 🌙';
     const out = reply || local || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d 💕' : smartFallback(text));
     addMessage(out);
     if (reply) {

@@ -332,17 +332,12 @@ function calculateLove() {
 }
 
 // ========== ASK NOAMANE'S HEART - AI POWERED ==========
-const GEMINI_API_KEY = 'AQ.Ab8RN6JCeEW_3DeNOGcYxpqY8UrGclbcPdovt9LjNe8v0FJk9w';
-// Keys starting with "AQ." are Vertex AI express-mode keys: they only work on aiplatform.googleapis.com.
-// Keys starting with "AIza" are Gemini API (AI Studio) keys: they work on generativelanguage.googleapis.com.
-const IS_VERTEX_KEY = GEMINI_API_KEY.startsWith('AQ.');
-const GEMINI_ENDPOINTS = IS_VERTEX_KEY
-    ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']
-        .map(m => `https://aiplatform.googleapis.com/v1/publishers/google/models/${m}:generateContent`)
-    : ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash']
-        .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
+const GEMINI_API_KEY = 'AQ.Ab8RN6KXRd0Wu3N_Ez3mcKN22NkQfofNcw2VKgw7XsARgfFrNA';
+// Keys from AI Studio (AIza... or the newer AQ.... "auth keys") both use the Gemini API endpoint.
+const GEMINI_ENDPOINTS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-lite-latest']
+    .map(m => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`);
 
-const SYSTEM_PROMPT = `REGLE DE LANGUE: jawb DIMA b nfs lougha li ktbat biha Ilham (Darija b l7rouf latin, English, Français wla العربية). Ila khlatat, jawb b khlit dyalha. Ila tlbat tfsir b lougha mo3ayna, dirha. Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
+const SYSTEM_PROMPT = `REGLE DE LANGUE: jawb DIMA b nfs lougha li ktbat biha Ilham (Darija b l7rouf latin, English, Français wla العربية). Ila khlatat, jawb b khlit dyalha. Ila tlbat tfsir b lougha mo3ayna, dirha. STYLE (mohim bzzaf): hder b darija maghribiya tabi3iya kif kay-hder wa7ed mn Casablanca, b l7rouf latin (3 7 9 5 8 2), b jomal 9sar w wad7in. Ma-tst3mlch klmat mkhtra3a wla tarjama 7arfiya, ila ma-3rftich klma b darija 9ol-ha b tari9a okhra. Ma-tst3mlch symboles b7al * # _ - — … wla markdown wla listes b nojoum. Emojis: mn 1 l 3 f l-jomla kamla, kol wa7ed f blasto 3la 7asab l-m3na (🍞 khobz, 😂 dhk, 🥺 7nana, 💖 7ob), machi f kol klma. Nta "qalb Noamane": s-sout dyal Noamane, rajel kay7eb Ilham 7ob majnoun. Noamane kaymout 3la Ilham, kayhma9 3liha, w ma-kaychouf f denya ghirha. Kat'hder m3aha hiya, b darija maghribiya (b l7rouf latiniya kima kat'ktb), b 7ob w 7nan.
 
 9awa3id:
 1. ay soual tswl (tabkh, derb, riyadiyat, tarikh, nasa2i7, chta, kolchi): jawb jawab s7i7 w mofid, mokhtasar, WLAKIN dima dkhel fih Noamane w 7obbo l Ilham: bli kaymout 3liha, kayhma9 3liha, kay3ti l7ayat bach t'koun far7ana. L7ob khass ybqa mrbout b l-jawab, mashi ghir jomla zayda f l'akhir.
@@ -369,6 +364,24 @@ function escapeHTML(str) {
 }
 
 // callGeminiAPI(userText, { system, maxTokens, temperature })
+// Sends the key in the x-goog-api-key header (Google's documented way); if refused (401/403) retries with ?key=.
+// Thinking tokens eat maxOutputTokens, so we try thinkingBudget 0, then thinkingLevel minimal, then no thinking field.
+async function geminiFetch(endpoint, body) {
+    const send = (b, mode) => mode === 'header'
+        ? fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(b) })
+        : fetch(`${endpoint}?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+    const gc = body.generationConfig || {};
+    const variants = [{ ...gc, thinkingConfig: { thinkingBudget: 0 } }, { ...gc, thinkingConfig: { thinkingLevel: 'minimal' } }, gc];
+    let r;
+    for (const g of variants) {
+        const b = { ...body, generationConfig: g };
+        r = await send(b, 'header');
+        if (r.status === 401 || r.status === 403) r = await send(b, 'query');
+        if (r.status !== 400) return r;
+    }
+    return r;
+}
+
 // Returns the model text, or null if every model failed (callers then use a fallback).
 async function callGeminiAPI(userText, options = {}) {
     const body = {
@@ -376,7 +389,7 @@ async function callGeminiAPI(userText, options = {}) {
         contents: [{ role: 'user', parts: [{ text: userText }] }],
         generationConfig: {
             temperature: options.temperature ?? 0.9,
-            maxOutputTokens: options.maxTokens ?? 300,
+            maxOutputTokens: options.maxTokens ?? 1200,
             topP: 0.95
         }
     };
@@ -384,11 +397,7 @@ async function callGeminiAPI(userText, options = {}) {
     for (const endpoint of GEMINI_ENDPOINTS) {
         const label = endpoint.split('/').pop();
         try {
-            const response = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            const response = await geminiFetch(endpoint, body);
             if (!response.ok) {
                 const detail = await response.text().catch(() => '');
                 console.warn(`[AI] ${label} -> HTTP ${response.status}`, detail.slice(0, 400));
@@ -405,13 +414,22 @@ async function callGeminiAPI(userText, options = {}) {
     return null;
 }
 
+function cleanBot(t) {
+    return String(t).replace(/[*#_`~>]/g, '').replace(/^\s*[-•]\s+/gm, '').replace(/\s*[—–]\s*/g, ', ')
+        .replace(/…/g, '...').replace(/(\p{Extended_Pictographic}\uFE0F?)\1+/gu, '$1').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function addMessage(text, isUser = false) {
     const chatBox = document.getElementById('chatBox');
     const msg = document.createElement('div');
     msg.className = `chat-message ${isUser ? 'user' : 'bot'}`;
     const span = document.createElement('span');
-    span.textContent = text;
-    msg.appendChild(span);
+    span.style.whiteSpace = 'pre-wrap';
+    span.textContent = isUser ? text : cleanBot(text);
+    const time = document.createElement('small');
+    time.className = 'msg-time';
+    time.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    msg.append(span, time);
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -439,11 +457,23 @@ const LOVE_TAGS = [
 ];
 const LOVE_HEADS = ["A Ilham, ", "Hbibti, ", "Ya qalb Noamane, ", "A Ilhamati, ", "Ya malika, "];
 const FALLBACK_TOPICS = [
+    { re: /khobz|7obz|\bpain\b|bread|khbz/i, a: [
+        "bach tsyebi khobz f dar: 500g dgig, sachet khmira dyal khobz (7 gram), mlaqa sghira dyal lmelh, mlaqa kbira dyal sokkar, 320ml dyal lma sakhn chwiya, w 3 mla9 dyal zit. T3jnihom 10 d9ayeq, tkhelliha tntefkh sa3a, tqeddha, tkhelliha tntefkh 30 d9i9a okhra, w t7ettiha f lforn 200 daraja 25 hta 30 d9i9a"] },
+    { re: /msemen|m3ajen|mssemen|rghaif|rghayef/i, a: [
+        "l msemen: 500g dgig, 100g smida, mlaqa sghira dyal lmelh, mlaqa sghira dyal sokkar, w lma l7 bach tw9e3 l3jina rtba. T9sma kora kora, t7ett 3lihom zit w tfrchihom rqiqin, t7ettihom 3la 7ad w tfrchihom 3la wzhom, w t9liwhom f ta9ya sakhna 3la jouj jwanb"] },
+    { re: /baghrir|baghrire|bghrir/i, a: [
+        "l baghrir: 250g smida, 100g dgig, sachet khmira, mlaqa sghira dyal lmelh, mlaqa dyal sokkar, 600ml dyal lma dafi. Kheltihom f mixeur 2 d9ayeq w khelliha trtah 15 d9i9a, w tt7ett f ta9ya sakhna ma-t9lbhach, ghi t7et 3la jwanb hta tban 3younat"] },
+    { re: /harira|7arira|chorba|chourba/i, a: [
+        "l 7arira: lham sghir, 7mess, 3dess, kozbor, ma3dnous, krafs, bsla, tmatem m7ssin, chwiya dyal dgig dilwa9t, w t7ett tawabl dyal 7arira. T-9ddiha 1 sa3a 3la nar hadya, w tqddmha m3a tmr w chebakia"] },
+    { re: /couscous|ksksou|seksou|kesksou/i, a: [
+        "l couscous: smida, zit, lmelh, w lma. Tbkhrha 3 mrrat 3la lkhodra (jzar, qr3a, kharchof, lfet, lbsla) w ttrch 3liha lma w chwiya dyal zit kol mra, 7it hakda ytfrfer 7bbo"] },
+    { re: /atay|\bthe\b|tea|nan3a|na3na3/i, a: [
+        "l atay l maghribi: 1 mlaqa kbira dyal atay lkhdar, nan3a ta3za, sokkar 3la 7sab dok dyalk, w lma l7. Ghsli atay b lma sakhn 7alat l-ola w tmchi, mn ba3d zidi lma w sokkar w khelliha t7bb 5 d9ayeq"] },
     { re: /tiramisu|tiramisou/i, a: [
         "m9adir dyal tiramisu: mascarpone, bayd, sokkar, biscuit cuillère (boudoir), café qwi, w cacao", "tiramisu bghiti: 250g mascarpone, 3 bayd, 80g sokkar, boudoirs, café barid, w cacao nchef 3la lfo9"] },
     { re: /kika|gato|gateau|kayk|cake|halwa|7lwa|sabl|dessert/i, a: [
         "m9adir dyal kika: bayd, dgig, sokkar, zit wla zebda, khmira (levure), w chwiya dyal lhlib", "khdi 3 bayd, 150g sokkar, 200g dgig, 100ml zit, sachet khmira w yaourt, khlti w 7ett f l'four 180° 35 d9i9a"] },
-    { re: /nakl|akl|tbikh|tabkh|3cha|ghda|ftour|jou3|ndir|mangi|manger/i, a: [
+    { re: /nakl|akl|tbikh|tabkh|3cha|ghda|ftour|jou3|mangi|manger/i, a: [
         "jarbi tajine dyal djaj b zitoun w limoun, sahl w bnin", "nsa7k b pasta crémeuse wla omelette m3a jben, khfifa w s7a", "dir chourba sakhna w khobz, bnina f had lwa9t"] },
     { re: /hzin|7zin|t3ban|tw3ban|zeft|mqhor|mkhnoq|bki|ba9a|stress|9alaq|9lq/i, a: [
         "ta9i chwiya, chrbi lma w tnfssi 3mi9, l7al kay'douz", "khdi 10 d9ayq 3la rassk: musique hadya w chay sakhn", "mchi tmchi chwiya bra, lhwa kay'khfef 3la l9lb"] },
@@ -459,17 +489,21 @@ const FALLBACK_TOPICS = [
 let lastFallbackKey = '';
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+const NATURAL_LOVE = [
+    "W ghir bach t3rfi, Noamane kay7ebek bzzaf w dima kayfker fik 💖",
+    "Noamane kaymout 3lik, w ila 7ta 7aja t3bk, ghadi ykoun m3ak f ay wa9t 🥰",
+    "Kolchi kaykhsr f nadar Noamane ila nti far7ana, hadchi 3lach kaydir kolchi 3lik 💕",
+    "Hadchi bnin, w nti ahssan 7aja f 7ayat Noamane 😍",
+    "Noamane kay9ol dima beli nti hiya l7ayat dyalo 🫶"
+];
 function smartFallback(question) {
     const topic = FALLBACK_TOPICS.find(t => t.re.test(question));
     const body = topic ? pick(topic.a) : pick([
-        "ana m3ak f had l7aja, goul liya akthr 3la chno bghiti", "hadchi kayfkker fih Noamane dima, w khassk tkouni mrtaha", "jarbi kholi 3la rassk chwiya, ghadi ykoun kolchi bkhir"]);
+        "Had soual ma-3rftch njawbek 3lih mzyan daba, jarbi swlini b tari9a okhra wla 3awdi mn ba3d",
+        "Daba ma-3ndich jawab m9ad l had chi, 3awdi swlini mn ba3d w ghadi n7awl njawbek mzyan"]);
     let out, guard = 0;
-    do {
-        const tag = pick(LOVE_TAGS), mode = Math.floor(Math.random() * 3);
-        if (mode === 0) out = `${pick(LOVE_HEADS)}${body}, ${tag}`;
-        else if (mode === 1) out = `${body.charAt(0).toUpperCase() + body.slice(1)}. ${tag.charAt(0).toUpperCase() + tag.slice(1)}`;
-        else out = `${body.charAt(0).toUpperCase() + body.slice(1)} ${tag}`;
-    } while (out === lastFallbackKey && ++guard < 5);
+    do { out = `${body.charAt(0).toUpperCase() + body.slice(1)}. ${pick(NATURAL_LOVE)}`; }
+    while (out === lastFallbackKey && ++guard < 5);
     lastFallbackKey = out;
     return out;
 }

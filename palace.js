@@ -119,3 +119,12 @@
   }
   firebase.auth().onAuthStateChanged((u) => { if (u && /@palace\.app$/.test(u.email || '')) start(u); });
 })();
+
+// ---- Heart chat: fullscreen toggle + quick chips ----
+window.toggleHeartChat = (open) => {
+  const c = document.getElementById('askContainer'); if (!c) return;
+  c.classList.toggle('full', open); document.body.classList.toggle('heart-open', open);
+  if (open) { const b = document.getElementById('chatBox'); b.scrollTop = b.scrollHeight; document.getElementById('userQuestion')?.focus(); }
+};
+window.heartAsk = (t) => { const i = document.getElementById('userQuestion'); if (!i) return; i.value = t; window.askNoamane?.(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.toggleHeartChat(false); });

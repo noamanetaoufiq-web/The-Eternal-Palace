@@ -245,11 +245,24 @@
         <section class="ask-section">
             <h2 class="section-title">🤖 Ask Noamane's Heart</h2>
             <p class="section-subtitle">Swlini ay 7aja a Ilham, o ghayjawbk a 9lb dyali 💖</p>
-            <div class="ask-container">
+            <button class="heart-open" onclick="toggleHeartChat(true)">Fte7 l-chat kamel 💬</button>
+            <div class="ask-container" id="askContainer">
+                <div class="heart-head">
+                    <button class="heart-back" onclick="toggleHeartChat(false)" aria-label="Rje3">←</button>
+                    <div class="heart-av">👑</div>
+                    <div><b>Qalb Noamane</b><small id="heartStatus">kayjawb lik b 7ob 💖</small></div>
+                </div>
                 <div class="chat-box" id="chatBox">
                     <div class="chat-message bot">
                         <span>Hbibti Ilham, swlini ay 7aja! 🎀 (Ex: chhal katbghini? twa7chtini ? ...)</span>
                     </div>
+                </div>
+                <div class="heart-chips">
+                    <button onclick="heartAsk('Chhal katbghini?')">Chhal katbghini? 💖</button>
+                    <button onclick="heartAsk('Bghit nsyb lkhobz, 3tini lma9adir')">Khobz 🍞</button>
+                    <button onclick="heartAsk('Ana m7zouna chwiya')">M7zouna 🥺</button>
+                    <button onclick="heartAsk('Goul liya chi 7aja zwina')">Chi 7aja zwina ✨</button>
+                    <button onclick="diagAI()">🔧 Tchekki AI</button>
                 </div>
                 <div class="chat-input-container">
                     <input type="text" id="userQuestion" class="chat-input" placeholder="Swli hna..." onkeypress="if(event.key==='Enter')askNoamane()">
