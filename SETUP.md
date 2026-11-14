@@ -3,7 +3,7 @@
 2. Authentication > Users > Add user (create BOTH yourself, pick strong passwords):
    - `ilhamati@palace.app`   — Ilham's password
    - `noamane@palace.app`    — your password
-3. Project settings > Your apps > Web app: copy **apiKey** into `firebaseConfig` in `script.js` (and `admin.html` if you still use it).
+3. apiKey: already filled in script.js and admin.html.
 4. Realtime Database > Rules: paste `database.rules.json` > Publish. (No UID needed: rules use the two emails.)
 5. Authentication > Settings > Authorized domains: make sure `noamanetaoufiq-web.github.io` is listed.
 6. Deploy. Login at the gate: answer `ilhamati` or `noamane` + password. Tap 💬, allow notifications.

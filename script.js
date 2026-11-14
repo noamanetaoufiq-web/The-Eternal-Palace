@@ -5,9 +5,13 @@
 
 // ========== FIREBASE CONFIGURATION ==========
 const firebaseConfig = {
-    apiKey: "PASTE_YOUR_FIREBASE_WEB_API_KEY",
+    apiKey: "AIzaSyBHD7JLpAJAruH1eyhLqa6q3RLNzpQcuz4",
     authDomain: "eternal-palace.firebaseapp.com",
-    databaseURL: "https://eternal-palace-default-rtdb.firebaseio.com/"
+    databaseURL: "https://eternal-palace-default-rtdb.firebaseio.com",
+    projectId: "eternal-palace",
+    storageBucket: "eternal-palace.firebasestorage.app",
+    messagingSenderId: "202517421099",
+    appId: "1:202517421099:web:8f2fa16a6e0a328be5de6e"
 };
 
 // Initialize Firebase
