@@ -230,6 +230,26 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     renderMemories();
   }
 
+
+  // Works even when every AI provider is down: simple intents run the site tools directly.
+  async function localIntent(text, media) {
+    const t = (text || '').toLowerCase();
+    if (media?.kind === 'image' && /memor|dhkri|dkri|gallery|galer|7ett|hett|zid/.test(t)) {
+      const r = tools.save_memory({ caption: `Dhkra ${new Date().toLocaleDateString('fr-FR')} 💕` });
+      return r.ok ? 'Hettitha f Memories dyalna 💕 chofiha f Gallery' : 'Ma-9dertch n7fedha: ' + r.error;
+    }
+    if (/music|ghni|play|chghl|khdm/.test(t)) {
+      const titles = [...document.querySelectorAll('.song-card h3')].map(h => h.textContent);
+      const r = tools.play_music({ song: titles.find(x => t.includes(x.toLowerCase())) || '' });
+      return r.ok ? `Hak ${r.playing} 🎵💕` : null;
+    }
+    if (/(sift|goul|9ol).*(noamane|nou3man)|miss you|wahcht|w7acht/.test(t)) {
+      const r = await tools.send_to_noamane({ message: `Ilham kat9ol lik: ${text}` });
+      return r.ok ? 'Siftha l Noamane 💖' : 'Ma-9dertch nsift daba, 3awdi mn ba3d 💕';
+    }
+    return null;
+  }
+
   window.askNoamane = async function () {
     const input = document.getElementById('userQuestion'), text = input.value.trim(), media = pending;
     if (!text && !media) return;
@@ -240,7 +260,8 @@ Ma-tkhdem adat ila ma-talbatch. Mnin tkhdem adat, jawb b jomla 7nina kima ila nt
     const reply = await runAgent(text, media);
     removeTypingIndicator();
     if (!reply && /debug/.test(location.search)) addMessage('⚠️ ' + (ERR.slice(-4).join(' | ') || 'no error captured'));
-    const out = reply || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d 💕' : smartFallback(text));
+    const local = reply ? null : await localIntent(text, media);
+    const out = reply || local || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d 💕' : smartFallback(text));
     addMessage(out);
     if (reply) {
       history.push({ role: 'user', parts: [{ text: (media ? `[${media.kind}] ` : '') + text }] }, { role: 'model', parts: [{ text: reply }] });
