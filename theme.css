@@ -103,3 +103,31 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .bucket-item:nth-child(4) .bucket-icon{background-image:url(img/dreams_forever.png)}
 .wish-card:nth-child(1) .wish-icon{background-image:url(img/wish_sun.png)}
 .wish-card:nth-child(2) .wish-icon{background-image:url(img/wish_moon.png)}
+
+/* ===== MOBILE ===== */
+@media (max-width:760px){
+  .palace-nav{flex-wrap:wrap!important;height:auto!important;padding:8px 12px 0!important;gap:0!important}
+  .nav-links{display:flex!important;position:static!important;width:100%;flex-direction:row!important;gap:18px!important;overflow-x:auto;padding:8px 2px 10px!important;margin:0!important;background:none!important;scrollbar-width:none;white-space:nowrap}
+  .nav-links::-webkit-scrollbar{display:none}
+  .nav-links a{font-size:.88rem;flex:none}
+  /* hero: central cushion with its baked-in text, big and readable */
+  .hero-section{margin-top:88px;aspect-ratio:470/404;background-size:216.2% 100%!important;background-position:50% 0!important}
+  .section-title{font-size:1.7rem!important}
+  .chat-input-container{display:flex!important;gap:8px;align-items:center}
+  .chat-input{min-width:0;flex:1;width:auto!important}
+  .send-btn{flex:none;padding:12px 16px!important}
+  #aiAttach{flex:none}
+  .mood-response:empty{display:none}
+  .counter-container{display:grid!important;grid-template-columns:repeat(2,1fr);gap:16px!important;padding:0 18px}
+  .counter-item{min-width:0!important}
+  .gift-grid{display:grid!important;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 10px}
+  .gift-item{width:auto!important;min-width:0;padding:12px 4px!important}
+  .gift-icon{width:48px;height:48px}
+  .reasons-grid,.letters-grid,.stats-container,.wishes-container,.bucket-container{display:grid!important;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 12px}
+  .reason-card,.when-card,.stat-card,.wish-card,.bucket-item{min-width:0;width:auto!important;margin:0!important;padding:14px 10px!important}
+  .reason-card p,.when-card p,.bucket-item p{font-size:.78rem}
+  .reason-card h3,.when-card h3,.bucket-item h3{font-size:.92rem}
+  .bucket-icon{height:84px}.reason-icon{width:52px;height:52px}.when-icon{width:60px;height:60px}.wish-icon{width:64px;height:64px}
+  .countdown-container{display:grid!important;grid-template-columns:1fr;gap:16px;justify-items:center}
+  .countdown-card{width:min(100%,280px)!important}
+}
