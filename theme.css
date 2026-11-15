@@ -60,3 +60,46 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .mood-btn{padding:18px 14px!important;min-width:112px}
 .miss-you-btn{padding:14px 38px!important;font-family:'Dancing Script',cursive;font-size:1.25rem!important}
 .quiz-container{background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* ===== Artwork taken from the design mockups (img/) ===== */
+/* hero: the mockup's own artwork; text is baked in, kept in the DOM for screen readers */
+.hero-section{background:url(img/hero.jpg) center/100% 100% no-repeat!important;min-height:0!important;aspect-ratio:1016/404;padding:0!important;overflow:hidden}
+.hero-section::before{display:none!important}
+.hero-section{margin-top:58px}
+.hero-content{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);opacity:0}
+/* counter: ornate gold frame image */
+.counter-item{background:radial-gradient(circle at 50% 40%,#3a2158,#1c0f30 75%)!important;border:30px solid transparent!important;border-image:url(img/frame_counter.png) 68 / 30px stretch!important;border-radius:0!important;box-shadow:0 14px 34px rgba(0,0,0,.55)!important;padding:4px 2px!important;min-width:150px}
+.counter-item::before,.counter-item::after{display:none}
+/* 3D icons */
+.mood-emoji,.gift-icon,.when-icon,.reason-icon,.bucket-icon,.wish-icon{font-size:0!important;color:transparent!important;text-shadow:none!important;display:block;margin:0 auto 8px;background-repeat:no-repeat;background-position:center;background-size:contain;filter:drop-shadow(0 8px 8px rgba(0,0,0,.45))}
+.mood-emoji{width:84px;height:84px}.gift-icon{width:56px;height:56px}.when-icon{width:70px;height:70px}.reason-icon{width:62px;height:62px}.wish-icon{width:78px;height:78px}.bucket-icon{width:100%;height:120px}
+.mood-btn:nth-child(1) .mood-emoji{background-image:url(img/mood_happy.png)}
+.mood-btn:nth-child(2) .mood-emoji{background-image:url(img/mood_loved.png)}
+.mood-btn:nth-child(3) .mood-emoji{background-image:url(img/mood_sad.png)}
+.mood-btn:nth-child(4) .mood-emoji{background-image:url(img/mood_angry.png)}
+.mood-btn:nth-child(5) .mood-emoji{background-image:url(img/mood_sleepy.png)}
+.mood-btn:nth-child(6) .mood-emoji{background-image:url(img/mood_excited.png)}
+.gift-item:nth-child(1) .gift-icon{background-image:url(img/gift_rose.png)}
+.gift-item:nth-child(2) .gift-icon{background-image:url(img/gift_chocolate.png)}
+.gift-item:nth-child(3) .gift-icon{background-image:url(img/gift_bouquet.png)}
+.gift-item:nth-child(4) .gift-icon{background-image:url(img/gift_ring.png)}
+.gift-item:nth-child(5) .gift-icon{background-image:url(img/gift_teddy.png)}
+.gift-item:nth-child(6) .gift-icon{background-image:url(img/gift_cake.png)}
+.gift-item:nth-child(7) .gift-icon{background-image:url(img/dreams_coffee.png)}
+.gift-item:nth-child(8) .gift-icon{background-image:url(img/wish_moon.png)}
+.when-card:nth-child(1) .when-icon{background-image:url(img/when_happy.png)}
+.when-card:nth-child(2) .when-icon{background-image:url(img/when_angry.png)}
+.when-card:nth-child(3) .when-icon{background-image:url(img/when_sad.png)}
+.when-card:nth-child(4) .when-icon{background-image:url(img/when_bored.png)}
+.reason-card:nth-child(1) .reason-icon{background-image:url(img/why_adventure.png)}
+.reason-card:nth-child(2) .reason-icon{background-image:url(img/why_kindness.png)}
+.reason-card:nth-child(3) .reason-icon{background-image:url(img/why_fun.png)}
+.reason-card:nth-child(4) .reason-icon{background-image:url(img/why_stability.png)}
+.reason-card:nth-child(5) .reason-icon{background-image:url(img/why_creativity.png)}
+.reason-card:nth-child(6) .reason-icon{background-image:url(img/why_future.png)}
+.bucket-item:nth-child(1) .bucket-icon{background-image:url(img/dreams_travel.png)}
+.bucket-item:nth-child(2) .bucket-icon{background-image:url(img/dreams_home.png)}
+.bucket-item:nth-child(3) .bucket-icon{background-image:url(img/dreams_coffee.png)}
+.bucket-item:nth-child(4) .bucket-icon{background-image:url(img/dreams_forever.png)}
+.wish-card:nth-child(1) .wish-icon{background-image:url(img/wish_sun.png)}
+.wish-card:nth-child(2) .wish-icon{background-image:url(img/wish_moon.png)}
