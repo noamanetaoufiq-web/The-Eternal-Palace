@@ -1,7 +1,7 @@
 // The Eternal Palace - Service Worker
 // Version 1.0.0
 
-const CACHE_NAME = 'eternal-palace-v21';
+const CACHE_NAME = 'eternal-palace-v22';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

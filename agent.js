@@ -387,9 +387,9 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
     const reply = await runAgent(text, media);
     removeTypingIndicator();
     if (!reply && /debug/.test(location.search)) addMessage('⚠️ ' + (ERR.slice(-4).join(' | ') || 'no error captured'));
-    const local = reply ? null : await localIntent(text, media);
-    const st = document.getElementById('heartStatus'); if (st) st.textContent = reply ? 'online, kayjawb lik b 7ob 💖' : 'offline daba, jawab 9sir 🌙';
-    const out = reply || local || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d 💕' : smartFallback(text));
+    const st = document.getElementById('heartStatus'); if (st) st.textContent = reply ? 'kayjawb lik b 7ob 💖' : 'l-AI mochghoul chwiya 🌙';
+    // Only the real AI answers: no offline/canned replies.
+    const out = reply || (media ? 'Ma-9dertch nchof had l-modia daba, 3awdi 7awli mn ba3d' : 'Ma-9dertch njawbek daba, l-AI mochghoul chwiya. 3awdi swlini mn ba3d 🌙');
     addMessage(out);
     if (reply) {
       history.push({ role: 'user', parts: [{ text: (media ? `[${media.kind}] ` : '') + text }] }, { role: 'model', parts: [{ text: reply }] });

@@ -145,7 +145,7 @@
   window.palaceChat = api;
 
   function start(u) {
-    uid = u.uid; me = u.email.split('@')[0]; other = me === 'noamane' ? 'ilhamati' : 'noamane';
+    uid = u.uid; me = u.email.split('@')[0]; document.body.classList.add('u-' + me); other = me === 'noamane' ? 'ilhamati' : 'noamane';
     if (!$('pcBtn')) build();
     $('pcName').textContent = NAMES[other]; $('pcSub').textContent = '🔒 Binatna ghir';
     const ref = db().ref('chats/main').orderByChild('t').limitToLast(100);
@@ -172,3 +172,53 @@ window.toggleHeartChat = (open) => {
 };
 window.heartAsk = (t) => { const i = document.getElementById('userQuestion'); if (!i) return; i.value = t; window.askNoamane?.(); };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { window.toggleHeartChat(false); document.getElementById('pcBack')?.click(); } });
+
+// ---- Suggestions: follow what she types (or the last message), appear one after another ----
+(() => {
+  const DEFAULT = ['Chhal katbghini? 💖', 'Goul liya chi 7aja zwina ✨', 'Chno ndir lyoum?', 'Ana m7zouna chwiya 🥺'];
+  const SUG = [
+    { k: /khobz|7obz|pain|bread|msemen|baghrir|tbikh|tabkh|3cha|ghda|ftour|wasfa|recette|gateau|cake|couscous|tajine/i,
+      q: ['3tini wasfa sahla l 3cha', 'Chno nbddel ila ma-kaynch khmira?', 'Kifach nsyb msemen mrqq?', 'Chhal kaykhsr l-khobz f l-forn?'] },
+    { k: /7zin|7zouna|m7zoun|bki|tr7|zl3an|mt3ba|tired|sad|ma-fr7anach|msbb|stress/i,
+      q: ['Kifach nfrrj 3la rassi?', 'Goul liya chi 7aja t-mchi 3la 9albi', 'Chno ndir bach nnsa had l-7zn?'] },
+    { k: /n3as|nu3as|nnam|nom|sleep|sahar|ma-kaynamch/i,
+      q: ['Kifach nnam mzyan lbarra7?', 'Chno nchrb 9bl ma nnam?', 'Goul liya 7kaya 9sira bach nnam'] },
+    { k: /protein|sr |sdr|djaj|regime|diet|riyada|sport|maigrir|wzn|poids|calorie|vitamine/i,
+      q: ['Chno l-ghda l-s7i7 f nhar?', 'Chhal mn lma khssni nchrb?', 'Chi tmarin sahlin f dar?'] },
+    { k: /code|html|css|python|javascript|bug|site|app|program/i,
+      q: ['Chrh liya had l-code', 'Kifach nsl7 had l-bug?', 'Chno ahssan tari9a nt3lm programmation?'] },
+    { k: /dars|exam|ecole|etude|fac|devoir|study|bac|concours/i,
+      q: ['Kifach nrajia3 b tari9a mzyana?', 'Chno ndir bach nrkz?', 'Nasa2i7 l l-imti7an'] },
+    { k: /safar|voyage|trip|vacances|plage|mdina|marrakech|ta7it|hotel/i,
+      q: ['Fin nmchiw f had l-3otla?', 'Chno nakhd m3aya f valise?', 'Chi blasat romantikiya f l-maghrib'] },
+    { k: /mousi9a|musique|ghnia|chanson|song|khdm|play|ajouter/i,
+      q: ['Khdm liya ghnia romantikiya', 'Khdm liya ghnia 7zina', 'Khdm liya ahssan ghnia dyal lyoum'] },
+    { k: /tswira|photo|memory|souvenir|galerie/i,
+      q: ['7ett had tswira f Memories', 'Kifach n7ett tswira f l-gallery?', 'Sift l Noamane message'] },
+    { k: /7ob|love|katbghini|wa7chtk|twa7chtk|3ichq|noamane|hbibi|kayhbni/i,
+      q: ['Chhal katbghini?', 'Chno ahssan 7aja fiya?', 'Imta bghiti nchofou?', 'Sift l Noamane i love u'] }
+  ];
+  const box = () => document.getElementById('heartChips');
+  const lastText = (cls) => { const m = document.querySelectorAll('#chatBox .chat-message.' + cls); return m.length ? m[m.length - 1].textContent : ''; };
+  let key = '';
+  function render() {
+    const el = box(), inp = document.getElementById('userQuestion'); if (!el || !inp) return;
+    const typed = inp.value.trim(), ctx = typed || (lastText('user') + ' ' + lastText('bot'));
+    let list = [];
+    SUG.forEach(g => { if (g.k.test(ctx)) list.push(...g.q); });
+    if (!list.length) list = DEFAULT;
+    list = [...new Set(list)].filter(q => q.toLowerCase() !== typed.toLowerCase()).slice(0, 4);
+    const nk = list.join('|'); if (nk === key) return; key = nk;
+    el.textContent = '';
+    list.forEach((q, i) => {
+      const b = document.createElement('button'); b.textContent = q; b.style.animationDelay = (i * 0.18) + 's';
+      b.onclick = () => window.heartAsk(q); el.appendChild(b);
+    });
+  }
+  let t; const soon = () => { clearTimeout(t); t = setTimeout(render, 250); };
+  const init = () => {
+    const inp = document.getElementById('userQuestion'), cb = document.getElementById('chatBox'); if (!inp || !cb) return;
+    inp.addEventListener('input', soon); new MutationObserver(soon).observe(cb, { childList: true }); render();
+  };
+  if (document.readyState !== 'loading') init(); else document.addEventListener('DOMContentLoaded', init);
+})();

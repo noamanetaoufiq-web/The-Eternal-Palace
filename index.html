@@ -257,13 +257,8 @@
                         <span>Hbibti Ilham, swlini ay 7aja! 🎀 (Ex: chhal katbghini? twa7chtini ? ...)</span>
                     </div>
                 </div>
-                <div class="heart-chips">
-                    <button onclick="heartAsk('Chhal katbghini?')">Chhal katbghini? 💖</button>
-                    <button onclick="heartAsk('Bghit nsyb lkhobz, 3tini lma9adir')">Khobz 🍞</button>
-                    <button onclick="heartAsk('Ana m7zouna chwiya')">M7zouna 🥺</button>
-                    <button onclick="heartAsk('Goul liya chi 7aja zwina')">Chi 7aja zwina ✨</button>
-                    <button onclick="diagAI()">🔧 Tchekki AI</button>
-                </div>
+                <div class="heart-chips" id="heartChips"></div>
+                <button class="diag-chip" onclick="diagAI()">🔧 Tchekki AI</button>
                 <div class="chat-input-container">
                     <input type="text" id="userQuestion" class="chat-input" placeholder="Swli hna..." onkeypress="if(event.key==='Enter')askNoamane()">
                     <button class="send-btn" onclick="askNoamane()">Send 💕</button>
