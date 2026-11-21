@@ -9,7 +9,7 @@
     angry:   { e: '😡', c: '#ef4444', ex: '😡💢🔥👿', t: 'm3sbba / angry' },
     sleepy:  { e: '😴', c: '#a78bfa', ex: '😴🌙💤', t: 'n3san(a) / sleepy' }
   };
-  const EMOJIS = ['❤️','😘','🥰','😍','😂','🥺','😢','😡','🤗','😴','🔥','💋','🌹','✨','🙏','💔','🫶','😭','🤍','🧸'];
+  const EMOJIS = ['❤️','😘','🥰','😍','😂','🥺','😢','😡','🤗','😴','🔥','💋','🌹','✨','🙏','💔','💞','😭','🤍','🧸'];
   let me = null, other = null, uid = null, panelOpen = false, unread = 0, loaded = false;
   const db = () => firebase.database();
   const $ = (id) => document.getElementById(id);

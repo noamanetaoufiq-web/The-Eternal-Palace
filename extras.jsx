@@ -45,7 +45,7 @@ function Reasons() {
     if (r) { setList([...list, r]); setI(list.length); } setBusy(false);
   };
   return (
-    <Card title="🫙 Sbab li bghitek">
+    <Card title="🍯 Sbab li bghitek">
       <p className="min-h-[3rem] text-lg">{list[i]}</p>
       <div className="mt-3 flex gap-2">
         <button className={BTN} onClick={() => setI((i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length)}>Sbab akhor 💗</button>
@@ -63,7 +63,7 @@ function DateRoulette() {
 }
 
 function Coupons() {
-  const all = ['🫂 Hug twil', '🍫 Chocolat', '🌹 Warda', '🍽️ 3cha 3la 7sabi', '🎬 Nkhtar nta l film', '📞 Mkalama twila'];
+  const all = ['🤗 Hug twil', '🍫 Chocolat', '🌹 Warda', '🍽️ 3cha 3la 7sabi', '🎬 Nkhtar nta l film', '📞 Mkalama twila'];
   const [used, setUsed] = useState(() => { try { return JSON.parse(localStorage.getItem('palaceCoupons') || '[]'); } catch { return []; } });
   const redeem = (c) => { if (used.includes(c)) return; const n = [...used, c]; setUsed(n); try { localStorage.setItem('palaceCoupons', JSON.stringify(n)); } catch {} window.sendToTelegram && window.sendToTelegram('🎟️ Ilham 7ellat coupon: ' + c); };
   return (

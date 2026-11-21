@@ -83,7 +83,7 @@ async function sendMissYou() {
 // Show hearts rain animation
 function showHeartsRain() {
     const container = document.getElementById('heartsRainContainer');
-    const hearts = ['💖', '💕', '💗', '💓', '💞', '💝', '❤️', '🩷', '🤍'];
+    const hearts = ['💖', '💕', '💗', '💓', '💞', '💝', '❤️', '💗', '🤍'];
     
     for (let i = 0; i < 30; i++) {
         setTimeout(() => {
@@ -511,7 +511,7 @@ const NATURAL_LOVE = [
     "Noamane kaymout 3lik, w ila 7ta 7aja t3bk, ghadi ykoun m3ak f ay wa9t 🥰",
     "Kolchi kaykhsr f nadar Noamane ila nti far7ana, hadchi 3lach kaydir kolchi 3lik 💕",
     "Hadchi bnin, w nti ahssan 7aja f 7ayat Noamane 😍",
-    "Noamane kay9ol dima beli nti hiya l7ayat dyalo 🫶"
+    "Noamane kay9ol dima beli nti hiya l7ayat dyalo 💞"
 ];
 function smartFallback(question) {
     const topic = FALLBACK_TOPICS.find(t => t.re.test(question));

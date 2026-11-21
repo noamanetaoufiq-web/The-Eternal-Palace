@@ -199,7 +199,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
 
   // Groq: ask Groq which chat models exist right now, best first; a model that fails is skipped for 10 minutes.
   const GROQ_PREF = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'moonshotai/kimi-k2-instruct', 'llama-3.1-8b-instant'];
-  const GROQ_SKIP = /whisper|tts|guard|safeguard|orpheus|compound|embed/i;
+  const GROQ_SKIP = /whisper|tts|guard|safeguard|orpheus|compound|embed|allam|saba|playai|canopy|distil|ocr|moderation/i;
   let groqCache = null; const benched = new Map();
   async function groqModels() {
     if (groqCache) return groqCache;
@@ -217,11 +217,20 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   }
   const clean = (t) => (t || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
+  const ARABIC = /[\u0600-\u06FF]/;
+  // true when a model drifted into Arabic script although the user never wrote Arabic
+  const drifted = (out, userText) => ARABIC.test(out || '') && !ARABIC.test(userText || '');
   async function oaCall(p, messages, withTools, maxTokens = 900) {
-    try {
-      const body = { model: p.model, messages, max_tokens: maxTokens, temperature: 0.9 };
+    maxTokens = Math.max(maxTokens, 900);
+    const send = async (extra) => {
+      const body = { model: p.model, messages, max_tokens: maxTokens, temperature: 0.9, ...extra };
       if (withTools) body.tools = OA_TOOLS;
-      const r = await fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, 'HTTP-Referer': location.origin, 'X-Title': 'Eternal Palace' }, body: JSON.stringify(body) });
+      return fetch(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}`, 'HTTP-Referer': location.origin, 'X-Title': 'Eternal Palace' }, body: JSON.stringify(body) });
+    };
+    try {
+      const low = /gpt-oss/.test(p.model) ? { reasoning_effort: 'low' } : {};
+      let r = await send(low);
+      if (r.status === 400 && low.reasoning_effort) r = await send({});
       if (!r.ok) { const d = (await r.text().catch(() => '')).slice(0, 300); console.warn(`[AI] ${p.name} -> HTTP ${r.status}`, d); logErr(`${p.name}: HTTP ${r.status} ${d}`); return null; }
       return (await r.json())?.choices?.[0]?.message || null;
     } catch (e) { console.error(`[AI] ${p.name} error:`, e); logErr(`${p.name}: ${e.message} (CORS/network)`); return null; }
@@ -235,7 +244,7 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
       let msg = await oaCall(p, messages, true);
       if (!msg && i === 0) msg = await oaCall(p, messages, false); // some free models reject tool use: answer without tools
       if (!msg) return null;
-      if (!msg.tool_calls?.length) return clean(msg.content) || null;
+      if (!msg.tool_calls?.length) { const o = clean(msg.content); return o && !drifted(o, text) ? o : null; }
       messages.push(msg);
       for (const tc of msg.tool_calls) {
         let res; try { res = await (tools[tc.function.name]?.(JSON.parse(tc.function.arguments || '{}')) ?? { ok: false, error: 'unknown tool' }); } catch (e) { res = { ok: false, error: String(e) }; }
@@ -275,8 +284,9 @@ Fhem l'awamir 7ta ila kant fihom ghalat f l7rouf (b7al 'memry' wla 'hatha f our 
   window.callGeminiAPI = async (text, opts = {}) => {
     const out = await geminiPlain(text, opts); if (out) return out;
     for (const p of [...await groqProviders(), ...otherProviders().filter(x => x.name !== 'codestral')]) {
-      const msg = await oaCall(p, [{ role: 'system', content: opts.system || SYSTEM_PROMPT }, { role: 'user', content: text }], false, opts.maxTokens || 300);
-      if (msg && clean(msg.content)) return clean(msg.content);
+      const msg = await oaCall(p, [{ role: 'system', content: (opts.system || SYSTEM_PROMPT) + ' Jawb ghir b darija maghribiya b l7rouf latiniya (machi b l7rouf l3arbiya), bla charh wla muqaddima.' }, { role: 'user', content: text }], false, opts.maxTokens || 600);
+      const o = msg && clean(msg.content);
+      if (o && !drifted(o, text)) return o;
     }
     return null;
   };

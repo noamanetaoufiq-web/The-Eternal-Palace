@@ -15,8 +15,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .section-title::after{height:14px;background:linear-gradient(90deg,transparent,var(--g2),transparent) center/100% 1px no-repeat;line-height:14px}
 .section-subtitle{color:#e9d9f7!important}
 /* hero */
-.hero-section{background:radial-gradient(700px 360px at 50% 55%,rgba(240,141,186,.18),transparent 70%),linear-gradient(180deg,rgba(20,10,38,.55),rgba(20,10,38,.92)),url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1920') center/cover!important;overflow:hidden}
-.hero-section::before{content:"";position:absolute;left:-10%;right:-10%;top:12%;height:180px;background:linear-gradient(100deg,transparent 10%,rgba(247,222,159,.5) 35%,transparent 55%,rgba(240,141,186,.35) 75%,transparent);filter:blur(14px);opacity:.55;transform:skewY(-6deg);animation:ribbon 9s ease-in-out infinite alternate}
+#home.hero-section{background:radial-gradient(700px 360px at 50% 55%,rgba(240,141,186,.18),transparent 70%),linear-gradient(180deg,rgba(20,10,38,.55),rgba(20,10,38,.92)),url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1920') center/cover!important;overflow:hidden}
+#home.hero-section::before{content:"";position:absolute;left:-10%;right:-10%;top:12%;height:180px;background:linear-gradient(100deg,transparent 10%,rgba(247,222,159,.5) 35%,transparent 55%,rgba(240,141,186,.35) 75%,transparent);filter:blur(14px);opacity:.55;transform:skewY(-6deg);animation:ribbon 9s ease-in-out infinite alternate}
 @keyframes ribbon{to{transform:skewY(5deg) translateY(30px);opacity:.3}}
 .crown-icon{filter:drop-shadow(0 0 22px rgba(247,222,159,.85)) drop-shadow(0 8px 10px #0008)}
 .title-line{font-family:'Dancing Script',cursive;color:var(--rose2);text-shadow:0 0 16px rgba(240,141,186,.6)}
@@ -63,10 +63,10 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
 
 /* ===== Artwork taken from the design mockups (img/) ===== */
 /* hero: the mockup's own artwork; text is baked in, kept in the DOM for screen readers */
-.hero-section{background:url(img/hero.jpg) center/100% 100% no-repeat!important;min-height:0!important;aspect-ratio:1016/404;padding:0!important;overflow:hidden}
-.hero-section::before{display:none!important}
-.hero-section{margin-top:58px}
-.hero-content{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);opacity:0}
+#home.hero-section{background:url(img/hero.jpg) center/100% 100% no-repeat!important;min-height:0!important;aspect-ratio:1016/404;padding:0!important;overflow:hidden}
+#home.hero-section::before{display:none!important}
+#home.hero-section{margin-top:58px}
+#home .hero-content{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);opacity:0}
 /* counter: ornate gold frame image */
 .counter-item{background:radial-gradient(circle at 50% 40%,#3a2158,#1c0f30 75%)!important;border:30px solid transparent!important;border-image:url(img/frame_counter.png) 68 / 30px stretch!important;border-radius:0!important;box-shadow:0 14px 34px rgba(0,0,0,.55)!important;padding:4px 2px!important;min-width:150px}
 .counter-item::before,.counter-item::after{display:none}
@@ -111,7 +111,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
   .nav-links::-webkit-scrollbar{display:none}
   .nav-links a{font-size:.88rem;flex:none}
   /* hero: central cushion with its baked-in text, big and readable */
-  .hero-section{margin-top:88px;aspect-ratio:470/404;background-size:216.2% 100%!important;background-position:50% 0!important}
+  #home.hero-section{margin-top:88px;aspect-ratio:470/404;background-size:216.2% 100%!important;background-position:50% 0!important}
   .section-title{font-size:1.7rem!important}
   .chat-input-container{display:flex!important;gap:8px;align-items:center}
   .chat-input{min-width:0;flex:1;width:auto!important}
@@ -131,3 +131,5 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
   .countdown-container{display:grid!important;grid-template-columns:1fr;gap:16px;justify-items:center}
   .countdown-card{width:min(100%,280px)!important}
 }
+
+#extras.hero-section{background:radial-gradient(900px 500px at 50% 0%,rgba(240,141,186,.14),transparent 70%),var(--plum1)!important;aspect-ratio:auto;min-height:0!important}
